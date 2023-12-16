@@ -1,4 +1,10 @@
 name: SoulEnchants
 version: '${project.version}'
 main: starshine.soulenchants.SoulEnchants
-api-version: '1.19'
+api-version: '1.16'
+
+commands:
+  soulenchants:
+    description: "This is the command of the plugin"
+    aliases: [ soe ]
+    permission: SoulEnchants.Main
