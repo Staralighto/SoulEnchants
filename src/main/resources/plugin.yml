@@ -1,0 +1,4 @@
+name: SoulEnchants
+version: '${project.version}'
+main: starshine.soulenchants.SoulEnchants
+api-version: '1.19'
