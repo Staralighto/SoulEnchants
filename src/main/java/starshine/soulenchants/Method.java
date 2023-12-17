@@ -3,12 +3,18 @@ package starshine.soulenchants;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -21,6 +27,12 @@ public class Method {
         List<Enchantment> list = new ArrayList<>();
         list.add(SoulEnchants.soulBlade);
         list.add(SoulEnchants.chiseling);
+        list.add(SoulEnchants.plenty);
+        list.add(SoulEnchants.accurate);
+        list.add(SoulEnchants.vision);
+        list.add(SoulEnchants.diligent);
+
+
         return list;
 
 
@@ -72,11 +84,11 @@ public class Method {
 
             Enchantment enchantment = list.get(i);
 
-            enchantBook.addEnchantment(enchantment,enchantment.getMaxLevel());
+            enchantBook.addUnsafeEnchantment(enchantment,enchantment.getMaxLevel());
 
             String name = enchantment.getName();
 
-            Method.setName(enchantBook,name);
+            Method.setName(enchantBook,ChatColor.AQUA+ name);
 
             inventory.setItem(i,enchantBook);
 
@@ -98,11 +110,11 @@ public class Method {
                 return;
             }
 
-            itemStack.addEnchantment(enchantment,level+1);
+            itemStack.addUnsafeEnchantment(enchantment,level+1);
 
         }else {
 
-            itemStack.addEnchantment(enchantment,1);
+            itemStack.addUnsafeEnchantment(enchantment,1);
         }
 
     }
@@ -117,7 +129,7 @@ public class Method {
                 return;
             }
 
-            itemStack.addEnchantment(enchantment,level-1);
+            itemStack.addUnsafeEnchantment(enchantment,level-1);
 
         }else {
             return;
@@ -134,7 +146,7 @@ public class Method {
         for(Enchantment enchantment : Method.enchantmentList()){
 
             if(!itemStack.getEnchantments().containsKey(enchantment)){
-                return;
+                continue;
             }
 
 
@@ -146,7 +158,7 @@ public class Method {
 
             ItemMeta meta = itemStack.getItemMeta();
             if(meta==null){
-                return;
+                continue;
             }
 
             List<String> lore = meta.getLore();
@@ -164,7 +176,7 @@ public class Method {
             }
 
             if(alreadyHaveLore){
-                return;
+                continue;
             }
 
             lore.add(ChatColor.WHITE + fullName);
@@ -215,7 +227,84 @@ public class Method {
         return 0;
     }
 
+
+
+    public static List<Material> oreBlockList(){
+
+        List<Material> list = new ArrayList<>();
+        list.add(Material.COAL);
+        list.add(Material.IRON_ORE);
+        list.add(Material.GOLD_ORE);
+        list.add(Material.DIAMOND_ORE);
+        list.add(Material.REDSTONE_ORE);
+        list.add(Material.LAPIS_ORE);
+        list.add(Material.COPPER_ORE);
+        list.add(Material.DEEPSLATE_COAL_ORE);
+        list.add(Material.DEEPSLATE_GOLD_ORE);
+        list.add(Material.DEEPSLATE_DIAMOND_ORE);
+        list.add(Material.DEEPSLATE_REDSTONE_ORE);
+        list.add(Material.DEEPSLATE_LAPIS_ORE);
+        list.add(Material.DEEPSLATE_COPPER_ORE);
+        list.add(Material.ANCIENT_DEBRIS);
+
+        return list;
+    }
+
+    public static List<Material> stoneBlockList(){
+
+        List<Material> list = new ArrayList<>(Method.oreBlockList());
+
+        list.add(Material.STONE);
+        list.add(Material.COBBLESTONE);
+        list.add(Material.SANDSTONE);
+        list.add(Material.RED_SANDSTONE);
+        list.add(Material.END_STONE);
+        list.add(Material.SMOOTH_STONE);
+        list.add(Material.BRICK);
+        list.add(Material.NETHERRACK);
+
+
+        return list;
+    }
+
+    public static List<Material> corpList(){
+
+        List<Material> cropList = new ArrayList<>();
+
+        cropList.add(Material.WHEAT);
+        cropList.add(Material.CARROTS);
+        cropList.add(Material.POTATOES);
+        cropList.add(Material.BEETROOTS);
+        cropList.add(Material.MELON_STEM);
+        cropList.add(Material.PUMPKIN_STEM);
+        cropList.add(Material.NETHER_WART);
+
+
+        return cropList;
+    }
+
     public static final String[] NUMERALS = {"0","I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
 
+    public static void shootArrow(Player player){
 
+        Arrow arrow = (Arrow) player.launchProjectile(Arrow.class);
+        arrow.setVelocity(player.getEyeLocation().getDirection().multiply(3)); // 设置弓箭的速度
+
+    }
+
+    public static FileConfiguration getEnchantConfig(){
+
+        return YamlConfiguration.loadConfiguration(new File(SoulEnchants.getPlugin().getDataFolder(),"enchant.yml"));
+    }
+
+    public static void saveEnchantConfig(){
+
+        FileConfiguration config = Method.getEnchantConfig();
+
+        try {
+            config.save(new File(SoulEnchants.getPlugin().getDataFolder(), "enchant.yml"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

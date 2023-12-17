@@ -6,12 +6,12 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.plugin.java.JavaPlugin;
-import starshine.soulenchants.Enchantments.Chiseling;
-import starshine.soulenchants.Enchantments.SoulBlade;
+import starshine.soulenchants.Enchantments.*;
 
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.Vector;
 
 public final class SoulEnchants extends JavaPlugin {
     private static SoulEnchants plugin;
@@ -19,6 +19,11 @@ public final class SoulEnchants extends JavaPlugin {
 
     public static Enchantment soulBlade;
     public static Enchantment chiseling;
+    public static Enchantment plenty;
+
+    public static Enchantment accurate;
+    public static Enchantment vision;
+    public static Enchantment diligent;
 
     @Override
     public void onEnable() {
@@ -28,6 +33,11 @@ public final class SoulEnchants extends JavaPlugin {
 
         soulBlade = new SoulBlade("soul_blade");
         chiseling = new Chiseling("chiseling");
+        plenty = new Plenty("plenty");
+        accurate = new Accurate("accurate");
+        vision = new Vision("vision");
+        diligent = new Diligent("diligent");
+
 
         for(Enchantment enchantment : Method.enchantmentList()){
             registerEnchantment(enchantment);
