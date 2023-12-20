@@ -12,15 +12,17 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.inventory.*;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -49,13 +51,13 @@ public class EventListener implements Listener {
             return;
         }
 
-        Bukkit.broadcastMessage("testMainMenu");
+        //Bukkit.broadcastMessage("testMainMenu");
 
 
 
         if (inventory.getHolder() == player && inventory.getSize() == 54) {
 
-            Bukkit.broadcastMessage("testMainMenu");
+            //Bukkit.broadcastMessage("testMainMenu");
 
             int clickedSlot = event.getRawSlot();
 
@@ -110,7 +112,7 @@ public class EventListener implements Listener {
             return;
         }
 
-        Bukkit.broadcastMessage("testEnchantMenu");
+        //Bukkit.broadcastMessage("testEnchantMenu");
 
 
         if (inventory.getHolder() == player && inventory.getSize() == 54) {
@@ -119,7 +121,7 @@ public class EventListener implements Listener {
 
             event.setCancelled(true);
 
-            Bukkit.broadcastMessage("testEnchantMenu");
+            //Bukkit.broadcastMessage("testEnchantMenu");
 
             ItemStack itemStack = event.getCurrentItem();
 
@@ -137,14 +139,14 @@ public class EventListener implements Listener {
 
                     if(event.getAction()== InventoryAction.PICKUP_ALL){
                         Method.levelUp(handItem,enchantment);
-                        Bukkit.broadcastMessage("testEnchantMenu");
+                        //Bukkit.broadcastMessage("testEnchantMenu");
 
                         player.sendMessage("已为手上物品的 " +name + " 提升1级");
                     }
 
                     if(event.getAction()== InventoryAction.PICKUP_HALF){
                         Method.levelDown(handItem,enchantment);
-                        Bukkit.broadcastMessage("testEnchantMenu");
+                        //Bukkit.broadcastMessage("testEnchantMenu");
 
                         player.sendMessage("已为手上物品的 " +name + " 降低1级");
                     }
@@ -155,6 +157,25 @@ public class EventListener implements Listener {
             }
 
         }
+    }
+    @EventHandler
+    public static void onHandBookMenu(InventoryClickEvent event){
+        Inventory inventory = event.getInventory();
+
+        if (!(event.getWhoClicked() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getWhoClicked();
+
+        InventoryView inventoryView = player.getOpenInventory();
+
+        if (!inventoryView.getTitle().equals("SoulEnchants Handbook")) {
+            return;
+        }
+
+        event.setCancelled(true);
+
     }
 
     @EventHandler
@@ -242,6 +263,64 @@ public class EventListener implements Listener {
     }
 
     @EventHandler
+    public static void onFurnacePlace(BlockPlaceEvent event){
+
+        Block block = event.getBlock();
+
+        if(block.getType()!=Method.getFurnace().getType()){
+            return;
+        }
+
+
+        ItemStack itemStack = event.getItemInHand();
+        ItemMeta meta = itemStack.getItemMeta();
+        if(meta==null){
+            return;
+        }
+
+        int furnaceMark = SoulEnchants.getPlugin().getConfig().getInt("furnace_mark",800251);
+
+        if(meta.isUnbreakable() && meta.getCustomModelData()==furnaceMark){
+
+            block.setMetadata("menu_open", new FixedMetadataValue(SoulEnchants.getPlugin(),true));
+
+        }
+
+    }
+
+    @EventHandler
+    public static void onFurnacePlace(PlayerInteractEvent event){
+
+
+        if(event.getAction()!= Action.LEFT_CLICK_BLOCK){
+            return;
+        }
+        if(event.getAction()!= Action.RIGHT_CLICK_BLOCK){
+            return;
+        }
+
+
+        Block block = event.getClickedBlock();
+
+        if(block==null){
+            return;
+        }
+        if(block.getType()!=Method.getFurnace().getType()){
+            return;
+        }
+
+        if(block.hasMetadata("menu_open")){
+
+            Method.openHandbookMenu(event.getPlayer());
+            event.setCancelled(true);
+
+        }
+
+
+    }
+
+
+    @EventHandler
     public static void updateEnchantLoreByClick(InventoryClickEvent event){
 
         ItemStack itemStack = event.getCurrentItem();
@@ -261,7 +340,7 @@ public class EventListener implements Listener {
         for (ItemStack itemStack : itemStacks) {
 
             if (itemStack == null) {
-                return;
+                continue;
             }
 
             Method.checkEnchantLore(itemStack);
@@ -298,7 +377,7 @@ public class EventListener implements Listener {
             Enchantment enchantment = SoulEnchants.soulBlade;
 
             if(!itemStack.getEnchantments().containsKey(enchantment)){
-                Bukkit.broadcastMessage("No Enchant");
+                 // Bukkit.broadcastMessage("No Enchant");
                 return;
             }
 
@@ -338,7 +417,7 @@ public class EventListener implements Listener {
         Enchantment enchantment = SoulEnchants.chiseling;
 
         if(!tool.getEnchantments().containsKey(enchantment)){
-            Bukkit.broadcastMessage("No Enchant");
+            //Bukkit.broadcastMessage("No Enchant");
             return;
         }
 
@@ -355,18 +434,20 @@ public class EventListener implements Listener {
         Vector direction = player.getLocation().getDirection();
 
         // 检查玩家是否朝向天空（Y轴正方向）
-        if (direction.getY() > 0.8 || direction.getY() < -0.8) {
-            for(int x = centerX -1 ; x<= centerX +1; x++){
-                for(int z= centerZ - 1; z<= centerZ + 1 ; z++){
+        if (direction.getY() > 0.7 || direction.getY() < -0.7) {
+
+            for(int x = centerX -1 ; x< centerX +2; x++){
+                for(int z= centerZ - 1; z< centerZ + 2 ; z++){
 
                     Location location = new Location(world,x,centerY,z);
                     Block nearByBlock = location.getBlock();
                     if(nearByBlock.getType()== Material.AIR){
-                        return;
+                        continue;
                     }
-                    if(!Method.stoneBlockList().contains(nearByBlock.getType())){
-                        return;
+                    if(nearByBlock.getType()==Material.BEDROCK){
+                        continue;
                     }
+
                     nearByBlock.breakNaturally(tool);
                     if(level==1){
                         event.setCancelled(true);
@@ -384,17 +465,19 @@ public class EventListener implements Listener {
 
         if(face==BlockFace.NORTH || face == BlockFace.SOUTH ){
 
-            for(int x = centerX -1 ; x<= centerX + 1; x++){
-                for(int y= centerY - 1; y<= centerY + 1 ; y++){
+            for(int x = centerX -1 ; x< centerX + 2; x++){
+                for(int y= centerY - 1; y< centerY + 2 ; y++){
 
                     Location location = new Location(world,x,y,centerZ);
                     Block nearByBlock = location.getBlock();
+
                     if(nearByBlock.getType()== Material.AIR){
-                        return;
+                        continue;
                     }
-                    if(!Method.stoneBlockList().contains(nearByBlock.getType())){
-                        return;
+                    if(nearByBlock.getType()==Material.BEDROCK){
+                        continue;
                     }
+
                     nearByBlock.breakNaturally(tool);
                     if(level==1){
                         event.setCancelled(true);
@@ -408,21 +491,22 @@ public class EventListener implements Listener {
         }
         if(face==BlockFace.EAST || face == BlockFace.WEST ){
 
-            for(int z = centerZ -1 ; z<= centerZ + 1; z++){
-                for(int y= centerY - 1; y<= centerY + 1 ; y++){
+            for(int z = centerZ -1 ; z< centerZ + 2; z++){
+                for(int y= centerY - 1; y< centerY + 2 ; y++){
 
                     Location location = new Location(world,centerX,y,z);
                     Block nearByBlock = location.getBlock();
                     if(nearByBlock.getType()== Material.AIR){
-                        return;
+                        continue;
                     }
-                    if(!Method.stoneBlockList().contains(nearByBlock.getType())){
-                        return;
+                    if(nearByBlock.getType()==Material.BEDROCK){
+                        continue;
                     }
+
                     nearByBlock.breakNaturally(tool);
                     if(level==1){
                         event.setCancelled(true);
-                        break;
+
                     }
 
                 }
@@ -451,7 +535,7 @@ public class EventListener implements Listener {
         Enchantment enchantment = SoulEnchants.plenty;
 
         if (!tool.getEnchantments().containsKey(enchantment)) {
-            Bukkit.broadcastMessage("No Enchant");
+            //Bukkit.broadcastMessage("No Enchant");
             return;
         }
 
@@ -480,6 +564,8 @@ public class EventListener implements Listener {
 
                 drop.setAmount(amount*3);
 
+                Method.addPlentyMark(drop);
+
             }
             tripleOccur = true;
         }
@@ -493,13 +579,37 @@ public class EventListener implements Listener {
             List<ItemStack> drops = (List<ItemStack>) block.getDrops();
             for (ItemStack drop : drops) {
 
-                 int amount = drop.getAmount();
+                int amount = drop.getAmount();
 
-                 drop.setAmount(amount*2);
+                drop.setAmount(amount*2);
+
+                Method.addPlentyMark(drop);
             }
 
         }
 
+
+    }
+
+    @EventHandler
+    public static void plentyEvent2(BlockPlaceEvent event){
+        Player player = event.getPlayer();
+        ItemStack itemStack = event.getItemInHand();
+        ItemMeta meta = itemStack.getItemMeta();
+
+        if(meta==null){
+            return;
+        }
+
+        int plentyMark = SoulEnchants.getPlugin().getConfig().getInt("plenty_mark");
+
+        if(meta.isUnbreakable() && meta.getCustomModelData()==plentyMark){
+
+            event.setCancelled(true);
+            player.sendMessage("赋予了恩泽，无法放置");
+
+
+        }
 
     }
     @EventHandler
@@ -513,7 +623,7 @@ public class EventListener implements Listener {
             Enchantment enchantment = SoulEnchants.accurate;
 
             if(!weapon.getEnchantments().containsKey(enchantment)){
-                Bukkit.broadcastMessage("No Enchant");
+                //Bukkit.broadcastMessage("No Enchant");
                 return;
             }
 
@@ -554,7 +664,7 @@ public class EventListener implements Listener {
             Enchantment enchantment = SoulEnchants.accurate;
 
             if(!bow.getEnchantments().containsKey(enchantment)){
-                Bukkit.broadcastMessage("No Enchant");
+                //Bukkit.broadcastMessage("No Enchant");
                 return;
             }
 
@@ -637,6 +747,7 @@ public class EventListener implements Listener {
 
         }
     }
+    @EventHandler
 
     public static void diligentEvent1(BlockBreakEvent event){
 
@@ -657,9 +768,9 @@ public class EventListener implements Listener {
         int centerY = block.getY();
         int centerZ = block.getZ();
 
-        for(int x =centerX-1; x<= centerX+1;x++){
+        for(int x =centerX-1; x< centerX+2;x++){
 
-            for(int z = centerZ-1;z<=centerZ+1;z++){
+            for(int z = centerZ-1;z<centerZ+2;z++){
 
 
                 Location location = new Location(world,x,centerY,z);
@@ -667,7 +778,12 @@ public class EventListener implements Listener {
 
 
                 if(!Method.corpList().contains(nearByBlock.getType())){
-                    return;
+                    continue;
+                }
+
+
+                if(nearByBlock.getType()==Material.BEDROCK){
+                    continue;
                 }
 
                 nearByBlock.breakNaturally(tool);
@@ -679,11 +795,11 @@ public class EventListener implements Listener {
         int doubleChance = 0;
         int tripleChance = 0;
 
-        if(level==1){doubleChance=20;}
+        if(level==1){doubleChance=Method.getEnchantConfig().getInt("diligent.level1",20);}
 
-        if(level>=2){doubleChance=100;}
+        if(level>=2){doubleChance=Method.getEnchantConfig().getInt("diligent.level2",100);}
 
-        if(level==3){tripleChance=20;}
+        if(level==3){doubleChance=Method.getEnchantConfig().getInt("diligent.level3",20);}
 
         boolean tripleOccur = false;
 
@@ -691,6 +807,10 @@ public class EventListener implements Listener {
 
             List<ItemStack> drops = (List<ItemStack>) block.getDrops();
             for (ItemStack drop : drops) {
+
+                if(!Method.isFullyGrown(block)){
+                    continue;
+                }
 
                 int amount = drop.getAmount();
 
@@ -709,21 +829,16 @@ public class EventListener implements Listener {
             List<ItemStack> drops = (List<ItemStack>) block.getDrops();
             for (ItemStack drop : drops) {
 
+                if(!Method.isFullyGrown(block)){
+                    continue;
+                }
+
                 int amount = drop.getAmount();
 
                 drop.setAmount(amount*2);
             }
 
         }
-
-
-
-
-
-
-
-
-
 
 
     }

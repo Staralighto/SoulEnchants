@@ -31,6 +31,11 @@ public final class SoulEnchants extends JavaPlugin {
         plugin=this;
         instance=this;
 
+        loadConfig();
+        loadEnchantConfig();
+        saveDefaultConfig();
+        saveConfig();
+
         soulBlade = new SoulBlade("soul_blade");
         chiseling = new Chiseling("chiseling");
         plenty = new Plenty("plenty");
@@ -48,8 +53,8 @@ public final class SoulEnchants extends JavaPlugin {
 
 
 
-        loadConfig();
-        loadEnchantConfig();
+
+
 
 
     }
@@ -126,13 +131,12 @@ public final class SoulEnchants extends JavaPlugin {
 
     private void loadEnchantConfig() {
 
-        File configFile = new File(getDataFolder(), "enchant.yml");
+        File configFile = new File(SoulEnchants.getPlugin().getDataFolder(), "enchantment.yml");
 
         // 检查配置文件是否存在，如果不存在则创建默认的语言配置文件
         if (!configFile.exists()) {
-            saveResource("enchant.yml", false);
+            saveResource("enchantment.yml", false);
         }
-
 
         FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);
 

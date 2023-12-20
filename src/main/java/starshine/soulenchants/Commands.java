@@ -18,6 +18,18 @@ public class Commands implements CommandExecutor {
             Method.openMainMenu(player);
         }
 
+        if(strings.length==1 && strings[0].equals("handbook")){
+            Player player = (Player) commandSender;
+            Method.openHandbookMenu(player);
+        }
+
+        if(strings.length==1 && strings[0].equals("furnace")){
+
+            Player player = (Player) commandSender;
+            player.getInventory().addItem(Method.getFurnace());
+
+        }
+
         if(strings.length==3 && strings[0].equals("bind")){
             Player player = (Player) commandSender;
             ItemStack handItem = player.getInventory().getItemInMainHand();

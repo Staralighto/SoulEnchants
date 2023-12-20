@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.Ageable;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
@@ -100,6 +101,122 @@ public class Method {
 
     }
 
+    public static void openHandbookMenu(Player player){
+
+        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Handbook");
+
+
+        List<Enchantment> list = Method.enchantmentList();
+
+
+
+        for(int i=0;  i<list.size(); i++){
+
+
+            ItemStack enchantBook = new ItemStack(Material.ENCHANTED_BOOK);
+
+            Enchantment enchantment = list.get(i);
+
+            enchantBook.addUnsafeEnchantment(enchantment,enchantment.getMaxLevel());
+
+            String name = enchantment.getName();
+
+            Method.setName(enchantBook,ChatColor.AQUA+ name);
+
+            if(enchantment.equals(SoulEnchants.soulBlade)){
+
+                inventory.setItem(10,enchantBook);
+
+                List<String> strings = Method.getEnchantConfig().getStringList("soul_blade.lore");
+
+                for(String string: strings){
+                    Method.addLore(enchantBook,string);
+                }
+
+            }
+            if(enchantment.equals(SoulEnchants.chiseling)){
+
+                inventory.setItem(12,enchantBook);
+
+                List<String> strings = Method.getEnchantConfig().getStringList("chiseling.lore");
+
+                for(String string: strings){
+                    Method.addLore(enchantBook,string);
+                }
+
+            }
+            if(enchantment.equals(SoulEnchants.plenty)){
+
+                inventory.setItem(14,enchantBook);
+
+                List<String> strings = Method.getEnchantConfig().getStringList("plenty.lore");
+
+                for(String string: strings){
+                    Method.addLore(enchantBook,string);
+                }
+
+            }
+            if(enchantment.equals(SoulEnchants.vision)){
+
+                inventory.setItem(16,enchantBook);
+
+                List<String> strings = Method.getEnchantConfig().getStringList("vision.lore");
+
+                for(String string: strings){
+                    Method.addLore(enchantBook,string);
+                }
+
+            }
+            if(enchantment.equals(SoulEnchants.accurate)){
+
+                inventory.setItem(19,enchantBook);
+
+                List<String> strings = Method.getEnchantConfig().getStringList("accurate.lore");
+
+                for(String string: strings){
+                    Method.addLore(enchantBook,string);
+                }
+
+            }
+            if(enchantment.equals(SoulEnchants.diligent)){
+
+                inventory.setItem(21,enchantBook);
+
+                List<String> strings = Method.getEnchantConfig().getStringList("diligent.lore");
+
+                for(String string: strings){
+                    Method.addLore(enchantBook,string);
+                }
+
+            }
+
+
+        }
+
+
+        player.openInventory(inventory);
+
+    }
+
+    public static ItemStack getFurnace(){
+
+        ItemStack itemStack = new ItemStack(Material.FURNACE);
+
+        int furnaceMark = SoulEnchants.getPlugin().getConfig().getInt("furnace_mark",800251);
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+
+        assert meta != null;
+        meta.setCustomModelData(furnaceMark);
+        meta.setUnbreakable(true);
+
+        itemStack.setItemMeta(meta);
+
+        return itemStack;
+
+    }
+
     public static void levelUp(ItemStack itemStack, Enchantment enchantment){
 
         if(itemStack.getEnchantments().containsKey(enchantment)){
@@ -186,9 +303,6 @@ public class Method {
             itemStack.setItemMeta(meta);
 
         }
-
-
-
 
 
     }
@@ -294,7 +408,7 @@ public class Method {
 
     public static FileConfiguration getEnchantConfig(){
 
-        return YamlConfiguration.loadConfiguration(new File(SoulEnchants.getPlugin().getDataFolder(),"enchant.yml"));
+        return YamlConfiguration.loadConfiguration(new File(SoulEnchants.getPlugin().getDataFolder(),"enchantment.yml"));
     }
 
     public static void saveEnchantConfig(){
@@ -302,9 +416,35 @@ public class Method {
         FileConfiguration config = Method.getEnchantConfig();
 
         try {
-            config.save(new File(SoulEnchants.getPlugin().getDataFolder(), "enchant.yml"));
-        } catch (IOException e) {
-            e.printStackTrace();
+            config.save(new File(SoulEnchants.getPlugin().getDataFolder(), "enchantment.yml"));
+        } catch (Exception ignored){
+
         }
+    }
+
+    public static void addPlentyMark(ItemStack itemStack){
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        int plentyMark = SoulEnchants.getPlugin().getConfig().getInt("plenty_mark",800250);
+
+        if(meta==null){
+            return;
+        }
+
+        meta.setCustomModelData(plentyMark);
+
+        meta.setUnbreakable(true);
+
+        itemStack.setItemMeta(meta);
+
+    }
+
+    public static boolean isFullyGrown(Block cropBlock) {
+        if (cropBlock.getBlockData() instanceof Ageable) {
+            Ageable ageable = (Ageable) cropBlock.getBlockData();
+            return ageable.getAge() == ageable.getMaximumAge();
+        }
+        return false;
     }
 }
