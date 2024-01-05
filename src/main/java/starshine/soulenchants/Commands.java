@@ -20,7 +20,7 @@ public class Commands implements CommandExecutor {
 
         if(strings.length==1 && strings[0].equals("handbook")){
             Player player = (Player) commandSender;
-            Method.openHandbookMenu(player);
+            Method.openEnchantMenu(player);
         }
 
         if(strings.length==1 && strings[0].equals("furnace")){

@@ -11,6 +11,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -41,37 +42,50 @@ public class Method {
 
     public static void openMainMenu(Player player) {
 
-        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants");
+        Inventory inventory = Bukkit.createInventory(player, 54,  "SoulEnchants");
+
 
         ItemStack enchantMenu = new ItemStack(Material.ENCHANTED_BOOK);
-
-
         Method.setName(enchantMenu, ChatColor.AQUA + "打开附魔菜单" );
         Method.addLore(enchantMenu, ChatColor.WHITE + "在这里获取附魔");
+
+        ItemStack handbook = new ItemStack(Material.BOOK);
+        Method.setName(enchantMenu, ChatColor.AQUA + "打开图鉴菜单" );
+        Method.addLore(enchantMenu, ChatColor.WHITE + "在这里查看附魔的效果");
+
+        ItemStack furnace = new ItemStack(Material.FURNACE);
+        Method.setName(furnace, ChatColor.AQUA + "获得附魔熔炉" );
+        Method.addLore(furnace, ChatColor.WHITE + "放置后可以右键打开强化菜单");
+
+        ItemStack paper = new ItemStack(Material.PAPER);
+
 
 
 
 
         inventory.setItem(10, enchantMenu);
-        inventory.setItem(12, enchantMenu);
-        inventory.setItem(14, enchantMenu);
-        inventory.setItem(16, enchantMenu);
-        inventory.setItem(19, enchantMenu);
-        inventory.setItem(21, enchantMenu);
-        inventory.setItem(23, enchantMenu);
-        inventory.setItem(25, enchantMenu);
-        inventory.setItem(28, enchantMenu);
-        inventory.setItem(34, enchantMenu);
-        inventory.setItem(47, enchantMenu);
-        inventory.setItem(49, enchantMenu);
-        inventory.setItem(51, enchantMenu);
+        inventory.setItem(12, handbook);
+        inventory.setItem(14, furnace);
+        inventory.setItem(16, paper);
+        inventory.setItem(19, paper);
+        inventory.setItem(21, paper);
+        inventory.setItem(23, paper);
+        inventory.setItem(25, paper);
+        inventory.setItem(28, paper);
+        inventory.setItem(34, paper);
+        inventory.setItem(47, paper);
+        inventory.setItem(49, paper);
+        inventory.setItem(51, paper);
 
 
         player.openInventory(inventory);
 
+
+
+
     }
 
-    public static void openEnchantMenu(Player player) {
+    public static void openOPEnchantMenu(Player player) {
 
         Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchants");
 
@@ -101,100 +115,268 @@ public class Method {
 
     }
 
-    public static void openHandbookMenu(Player player){
+    public static void openEnchantMenu(Player player) {
 
         Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Handbook");
 
+        List<String> soulBladeLore = Method.getEnchantConfig().getStringList("soul_blade.lore");
+        Method.setSlotLore(inventory, SoulEnchants.soulBlade, 10, soulBladeLore);
 
-        List<Enchantment> list = Method.enchantmentList();
+        List<String> chiselingLore = Method.getEnchantConfig().getStringList("chiseling.lore");
+        Method.setSlotLore(inventory, SoulEnchants.chiseling,12, chiselingLore);
+
+        List<String> plentyLore = Method.getEnchantConfig().getStringList("plenty.lore");
+        Method.setSlotLore(inventory, SoulEnchants.plenty, 14, plentyLore);
+
+        List<String> accurateLore = Method.getEnchantConfig().getStringList("accurate.lore");
+        Method.setSlotLore(inventory, SoulEnchants.accurate, 16, accurateLore);
+
+        List<String> diligentLore = Method.getEnchantConfig().getStringList("diligent.lore");
+        Method.setSlotLore(inventory, SoulEnchants.diligent, 19, diligentLore);
+
+        List<String> visionLore = Method.getEnchantConfig().getStringList("vision.lore");
+        Method.setSlotLore(inventory, SoulEnchants.vision, 21, visionLore);
+
+
+        player.openInventory(inventory);
+
+    }
+
+    public static void openEnchantPrepareMenu(Player player, Enchantment enchantment){
+
+        String name = enchantment.getName();
+
+        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchanting");
+
+        ItemStack handItem = player.getInventory().getItemInMainHand();
+        ItemStack handItemCopy = new ItemStack(handItem);
+        handItemCopy.removeEnchantment(enchantment);
+
+        if(!enchantment.getItemTarget().includes(handItem.getType())){
+            player.sendMessage(ChatColor.RED +"手上的物品类型不符合该附魔的要求");
+            return;
+        }
+
+        ItemStack enchantBook = new ItemStack(Material.ENCHANTED_BOOK);
+        Method.setName(enchantBook,name);
+        enchantBook.addUnsafeEnchantment(enchantment,Method.getLevel(handItem,enchantment)+1);
+
+
+        ItemStack whiteGlass = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
+        Method.setName( whiteGlass," ");
+
+        ItemStack confirm = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
+        Method.setName( confirm, ChatColor.GREEN +  "确定");
+
+        ItemStack cancel = new ItemStack(Material.RED_STAINED_GLASS_PANE);
+        Method.setName(cancel,ChatColor.RED + "取消");
 
 
 
-        for(int i=0;  i<list.size(); i++){
 
 
-            ItemStack enchantBook = new ItemStack(Material.ENCHANTED_BOOK);
+        //Extract the previous enchantment lore
+        ItemMeta meta = handItemCopy.getItemMeta();
+        if(meta!=null){
+            meta.setLore(new ArrayList<>());
+        }
+        handItemCopy.setItemMeta(meta);
 
-            Enchantment enchantment = list.get(i);
 
-            enchantBook.addUnsafeEnchantment(enchantment,enchantment.getMaxLevel());
+        if(handItem.getEnchantments().containsKey(enchantment)) {
 
-            String name = enchantment.getName();
+            int level = Method.getLevel(handItem, enchantment);
 
-            Method.setName(enchantBook,ChatColor.AQUA+ name);
+            if(level==enchantment.getMaxLevel()){
 
-            if(enchantment.equals(SoulEnchants.soulBlade)){
+                Method.addLore(handItemCopy, ChatColor.GOLD+ name + " 附魔已达到最高等级");
 
-                inventory.setItem(10,enchantBook);
 
-                List<String> strings = Method.getEnchantConfig().getStringList("soul_blade.lore");
 
-                for(String string: strings){
-                    Method.addLore(enchantBook,string);
-                }
+            }else {
 
-            }
-            if(enchantment.equals(SoulEnchants.chiseling)){
+                Method.addLore(handItemCopy,  ChatColor.GOLD + Method.process(enchantment,level,level+1));
 
-                inventory.setItem(12,enchantBook);
+                List<String> requireMaterials = Method.requireMaterials(enchantment,level,level+1);
 
-                List<String> strings = Method.getEnchantConfig().getStringList("chiseling.lore");
+                Method.addLoreList(handItemCopy,requireMaterials);
 
-                for(String string: strings){
-                    Method.addLore(enchantBook,string);
-                }
-
-            }
-            if(enchantment.equals(SoulEnchants.plenty)){
-
-                inventory.setItem(14,enchantBook);
-
-                List<String> strings = Method.getEnchantConfig().getStringList("plenty.lore");
-
-                for(String string: strings){
-                    Method.addLore(enchantBook,string);
-                }
-
-            }
-            if(enchantment.equals(SoulEnchants.vision)){
-
-                inventory.setItem(16,enchantBook);
-
-                List<String> strings = Method.getEnchantConfig().getStringList("vision.lore");
-
-                for(String string: strings){
-                    Method.addLore(enchantBook,string);
-                }
-
-            }
-            if(enchantment.equals(SoulEnchants.accurate)){
-
-                inventory.setItem(19,enchantBook);
-
-                List<String> strings = Method.getEnchantConfig().getStringList("accurate.lore");
-
-                for(String string: strings){
-                    Method.addLore(enchantBook,string);
-                }
-
-            }
-            if(enchantment.equals(SoulEnchants.diligent)){
-
-                inventory.setItem(21,enchantBook);
-
-                List<String> strings = Method.getEnchantConfig().getStringList("diligent.lore");
-
-                for(String string: strings){
-                    Method.addLore(enchantBook,string);
-                }
 
             }
 
 
         }
 
+        if(!handItem.getEnchantments().containsKey(enchantment)){
+
+            Method.addLore(handItemCopy,ChatColor.GOLD+ Method.process(enchantment,0,1));
+
+            List<String> requireMaterials = Method.requireMaterials(enchantment,0,1);
+
+            Method.addLoreList(handItemCopy,requireMaterials);
+
+        }
+
+
+        inventory.setItem(4,enchantBook);
+
+        inventory.setItem(9,whiteGlass);
+        inventory.setItem(10,whiteGlass);
+        inventory.setItem(11,whiteGlass);
+        inventory.setItem(12,whiteGlass);
+
+        inventory.setItem(13,handItemCopy);
+
+        inventory.setItem(14,whiteGlass);
+        inventory.setItem(15,whiteGlass);
+        inventory.setItem(16,whiteGlass);
+        inventory.setItem(17,whiteGlass);
+
+        inventory.setItem(22,whiteGlass);
+
+        inventory.setItem(48,confirm);
+        inventory.setItem(50,cancel);
 
         player.openInventory(inventory);
+
+
+    }
+
+    public static String fullName (Enchantment enchantment , int level){
+
+        String name = enchantment.getName();
+        String numeral = Method.NUMERALS[level];
+
+        return ChatColor.WHITE + name + numeral;
+
+
+    }
+
+    public static String process(Enchantment enchantment, int oldLevel,int newLevel ){
+        String name = enchantment.getName();
+        String process = null;
+        if(oldLevel==0){
+            process = name + Method.NUMERALS[0] + "->" + name + Method.NUMERALS[1];
+        }
+        if(oldLevel>0){
+            process = name + Method.NUMERALS[oldLevel] + "->" + name + Method.NUMERALS[newLevel+1];
+        }
+
+        return process;
+
+    }
+    public static List<String> requireMaterials(Enchantment enchantment,int oldLevel,int newLevel ){
+
+        List<String> list = new ArrayList<>();
+
+        if(enchantment==SoulEnchants.soulBlade){
+
+            if(oldLevel==0){
+                list.add(ChatColor.WHITE + "消耗经验值：100级");
+            }
+            if(oldLevel==1){
+                list.add(ChatColor.WHITE + "消耗经验值：200级");
+            }
+            if(oldLevel==2){
+                list.add(ChatColor.WHITE + "消耗经验值：500级");
+            }
+
+        }
+        if(enchantment==SoulEnchants.chiseling){
+
+            if(oldLevel==0){
+                list.add(ChatColor.WHITE + "消耗经验值：100级");
+            }
+            if(oldLevel==1){
+                list.add(ChatColor.WHITE + "消耗经验值：200级");
+            }
+            if(oldLevel==2){
+                list.add(ChatColor.WHITE + "消耗经验值：500级");
+            }
+
+        }
+        if(enchantment==SoulEnchants.plenty){
+
+            if(oldLevel==0){
+                list.add(ChatColor.WHITE + "消耗经验值：100级");
+            }
+            if(oldLevel==1){
+                list.add(ChatColor.WHITE + "消耗经验值：200级");
+            }
+            if(oldLevel==2){
+                list.add(ChatColor.WHITE + "消耗经验值：500级");
+            }
+
+        }
+        if(enchantment==SoulEnchants.accurate){
+
+            if(oldLevel==0){
+                list.add(ChatColor.WHITE + "消耗经验值：100级");
+            }
+            if(oldLevel==1){
+                list.add(ChatColor.WHITE + "消耗经验值：200级");
+            }
+            if(oldLevel==2){
+                list.add(ChatColor.WHITE + "消耗经验值：500级");
+            }
+
+        }
+        if(enchantment==SoulEnchants.vision){
+
+            if(oldLevel==0){
+                list.add(ChatColor.WHITE + "消耗经验值：100级");
+            }
+            if(oldLevel==1){
+                list.add(ChatColor.WHITE + "消耗经验值：200级");
+            }
+            if(oldLevel==2){
+                list.add(ChatColor.WHITE + "消耗经验值：500级");
+            }
+
+        }
+        if(enchantment==SoulEnchants.diligent){
+
+            if(oldLevel==0){
+                list.add(ChatColor.WHITE + "消耗经验值:100级");
+            }
+            if(oldLevel==1){
+                list.add(ChatColor.WHITE + "消耗经验值：200级");
+            }
+            if(oldLevel==2){
+                list.add(ChatColor.WHITE + "消耗经验值：500级");
+            }
+
+        }
+
+        return list;
+
+
+    }
+
+
+
+
+
+    public static void setSlotLore(Inventory inventory,Enchantment enchantment, int slot ,List<String> lore){
+
+        String name = enchantment.getName();
+
+        ItemStack itemStack = new ItemStack(Material.ENCHANTED_BOOK);
+
+        Method.setName(itemStack,name);
+
+        ItemMeta meta = itemStack.getItemMeta();
+        if(meta==null){
+            return;
+        }
+
+        lore.replaceAll(s -> ChatColor.GRAY + s);
+
+        meta.setLore(lore);
+
+        itemStack.setItemMeta(meta);
+
+        inventory.setItem(slot,itemStack);
 
     }
 
@@ -234,6 +416,8 @@ public class Method {
             itemStack.addUnsafeEnchantment(enchantment,1);
         }
 
+        Method.checkEnchantLore(itemStack);
+
     }
 
     public static void levelDown(ItemStack itemStack, Enchantment enchantment){
@@ -252,13 +436,17 @@ public class Method {
             return;
         }
 
+        Method.checkEnchantLore(itemStack);
+
     }
 
 
 
     public static void checkEnchantLore(ItemStack itemStack){
 
-
+        if(itemStack==null){
+            return;
+        }
 
         for(Enchantment enchantment : Method.enchantmentList()){
 
@@ -269,8 +457,10 @@ public class Method {
 
             String name = enchantment.getName();
             int level = Method.getLevel(itemStack,enchantment);
+
+
             String romanLevel = Method.NUMERALS[level];
-            String fullName = name + " " + romanLevel;
+            String fullName = ChatColor.WHITE + name + " " + romanLevel;
 
 
             ItemMeta meta = itemStack.getItemMeta();
@@ -283,20 +473,29 @@ public class Method {
                 lore=new ArrayList<>();
             }
 
-            boolean alreadyHaveLore = false;
 
-            for(String line: lore){
-                if (line.contains(fullName)){
-                    alreadyHaveLore = true;
+            boolean replaced = false;
+
+            for(int i=0;i<lore.size();i++){
+
+                String line = lore.get(i);
+
+                if(line.contains(name) && line.length()<=10){
+
+                    lore.set(i,fullName);
+                    replaced = true;
                     break;
                 }
+
             }
 
-            if(alreadyHaveLore){
-                continue;
+
+
+            if(!replaced){
+                lore.add(fullName);
             }
 
-            lore.add(ChatColor.WHITE + fullName);
+
 
             meta.setLore(lore);
 
@@ -326,6 +525,27 @@ public class Method {
         }
         itemStack.setItemMeta(meta);
     }
+
+    public static void addLoreList(ItemStack itemStack,List<String> strings){
+
+        ItemMeta meta = itemStack.getItemMeta();
+        if(meta!=null){
+            List<String> lore = meta.getLore();
+            if(lore==null){
+                lore=new ArrayList<>();
+            }
+
+            lore.addAll(strings);
+
+            meta.setLore(lore);
+
+        }
+
+        itemStack.setItemMeta(meta);
+
+    }
+
+
 
     public static int getLevel(ItemStack item, Enchantment enchant) {
         if (item.getItemMeta() != null) {
@@ -397,7 +617,7 @@ public class Method {
         return cropList;
     }
 
-    public static final String[] NUMERALS = {"0","I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
+    public static final String[] NUMERALS = {"O","I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
 
     public static void shootArrow(Player player){
 
