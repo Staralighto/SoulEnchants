@@ -1,10 +1,7 @@
 package starshine.soulenchants;
 
 import com.google.common.util.concurrent.ServiceManager;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Furnace;
@@ -232,37 +229,42 @@ public class EventListener implements Listener {
         }
 
         if(currentItem.getType().equals(Material.LIME_STAINED_GLASS_PANE)) {
-
+            //Confirm and start the enchanting process
             ItemStack enchantBook = inventory.getItem(4);
+            if(enchantBook==null){
+                return;
+            }
+            Enchantment enchantment = null;
 
-            ItemStack handItemCopy = inventory.getItem(13);
+            //Find the target enchantment in the enchant book
+            for(Enchantment enchant: Method.enchantmentList()){
+                if(enchantBook.getEnchantments().containsKey(enchant)){
+                    enchantment=enchant;
+                    break;
+                }
+            }
 
-            ItemStack handItem = player.getInventory().getItemInMainHand();
-
-            if (enchantBook == null) {
+            if(enchantment==null){
                 return;
             }
 
-            for(Enchantment enchantment : Method.enchantmentList()){
+            String name = enchantment.getName();
 
-                if(!enchantBook.getEnchantments().containsKey(enchantment)){
-                    continue;
-                }
+            int playerLevel = player.getLevel();
 
+            if(playerLevel<100){
+                player.sendMessage(ChatColor.WHITE+"玩家等级低于100，无法升级+"+name+"附魔");
+
+            }else {
+                player.sendMessage(ChatColor.WHITE+name+"附魔等级成功提升");
+                player.setLevel(playerLevel-100);
+                ItemStack handItem = player.getInventory().getItemInMainHand();
                 Method.levelUp(handItem,enchantment);
-
-                String name = enchantment.getName();
-                int level = Method.getLevel(handItem,enchantment);
-
-                player.sendMessage(name+" 附魔等级已提升至" + Method.fullName(enchantment,level));
-
-                player.closeInventory();
-
             }
 
-
-
         }
+
+
 
 
     }

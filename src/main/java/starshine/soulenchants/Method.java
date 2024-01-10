@@ -146,76 +146,45 @@ public class Method {
 
         String name = enchantment.getName();
 
-        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchanting");
-
         ItemStack handItem = player.getInventory().getItemInMainHand();
-        ItemStack handItemCopy = new ItemStack(handItem);
-        handItemCopy.removeEnchantment(enchantment);
 
         if(!enchantment.getItemTarget().includes(handItem.getType())){
             player.sendMessage(ChatColor.RED +"手上的物品类型不符合该附魔的要求");
             return;
         }
 
+        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchanting");
+
+        ItemStack handItemCopy = new ItemStack(handItem);
+
+
+        int currentLevel = 0;
+
+        //If the item have enchantment, update the current level.
+        if(handItem.getEnchantments().containsKey(enchantment)){
+             currentLevel = Method.getLevel(handItem,enchantment);
+        }
+
+        Method.addLore(handItemCopy,ChatColor.GOLD+Method.process(enchantment,currentLevel));
+
+
+
+
+
+
+
         ItemStack enchantBook = new ItemStack(Material.ENCHANTED_BOOK);
         Method.setName(enchantBook,name);
-        enchantBook.addUnsafeEnchantment(enchantment,Method.getLevel(handItem,enchantment)+1);
-
+        enchantBook.addUnsafeEnchantment(enchantment,enchantment.getMaxLevel());
 
         ItemStack whiteGlass = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
         Method.setName( whiteGlass," ");
 
         ItemStack confirm = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
-        Method.setName( confirm, ChatColor.GREEN +  "确定");
+        Method.setName(confirm, ChatColor.GREEN +  "确定");
 
         ItemStack cancel = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         Method.setName(cancel,ChatColor.RED + "取消");
-
-
-
-
-
-        //Extract the previous enchantment lore
-        ItemMeta meta = handItemCopy.getItemMeta();
-        if(meta!=null){
-            meta.setLore(new ArrayList<>());
-        }
-        handItemCopy.setItemMeta(meta);
-
-
-        if(handItem.getEnchantments().containsKey(enchantment)) {
-
-            int level = Method.getLevel(handItem, enchantment);
-
-            if(level==enchantment.getMaxLevel()){
-
-                Method.addLore(handItemCopy, ChatColor.GOLD+ name + " 附魔已达到最高等级");
-
-
-
-            }else {
-
-                Method.addLore(handItemCopy,  ChatColor.GOLD + Method.process(enchantment,level,level+1));
-
-                List<String> requireMaterials = Method.requireMaterials(enchantment,level,level+1);
-
-                Method.addLoreList(handItemCopy,requireMaterials);
-
-
-            }
-
-
-        }
-
-        if(!handItem.getEnchantments().containsKey(enchantment)){
-
-            Method.addLore(handItemCopy,ChatColor.GOLD+ Method.process(enchantment,0,1));
-
-            List<String> requireMaterials = Method.requireMaterials(enchantment,0,1);
-
-            Method.addLoreList(handItemCopy,requireMaterials);
-
-        }
 
 
         inventory.setItem(4,enchantBook);
@@ -242,6 +211,7 @@ public class Method {
 
     }
 
+
     public static String fullName (Enchantment enchantment , int level){
 
         String name = enchantment.getName();
@@ -252,106 +222,23 @@ public class Method {
 
     }
 
-    public static String process(Enchantment enchantment, int oldLevel,int newLevel ){
+    public static String process(Enchantment enchantment, int currentLevel){
+
         String name = enchantment.getName();
         String process = null;
-        if(oldLevel==0){
-            process = name + Method.NUMERALS[0] + "->" + name + Method.NUMERALS[1];
-        }
-        if(oldLevel>0){
-            process = name + Method.NUMERALS[oldLevel] + "->" + name + Method.NUMERALS[newLevel+1];
+
+        process = name + Method.NUMERALS[currentLevel] + "->" + name + Method.NUMERALS[currentLevel+1];
+
+        if(currentLevel>=enchantment.getMaxLevel()){
+            process = name + "附魔的等级已经达到最大";
         }
 
         return process;
 
     }
-    public static List<String> requireMaterials(Enchantment enchantment,int oldLevel,int newLevel ){
-
-        List<String> list = new ArrayList<>();
-
-        if(enchantment==SoulEnchants.soulBlade){
-
-            if(oldLevel==0){
-                list.add(ChatColor.WHITE + "消耗经验值：100级");
-            }
-            if(oldLevel==1){
-                list.add(ChatColor.WHITE + "消耗经验值：200级");
-            }
-            if(oldLevel==2){
-                list.add(ChatColor.WHITE + "消耗经验值：500级");
-            }
-
-        }
-        if(enchantment==SoulEnchants.chiseling){
-
-            if(oldLevel==0){
-                list.add(ChatColor.WHITE + "消耗经验值：100级");
-            }
-            if(oldLevel==1){
-                list.add(ChatColor.WHITE + "消耗经验值：200级");
-            }
-            if(oldLevel==2){
-                list.add(ChatColor.WHITE + "消耗经验值：500级");
-            }
-
-        }
-        if(enchantment==SoulEnchants.plenty){
-
-            if(oldLevel==0){
-                list.add(ChatColor.WHITE + "消耗经验值：100级");
-            }
-            if(oldLevel==1){
-                list.add(ChatColor.WHITE + "消耗经验值：200级");
-            }
-            if(oldLevel==2){
-                list.add(ChatColor.WHITE + "消耗经验值：500级");
-            }
-
-        }
-        if(enchantment==SoulEnchants.accurate){
-
-            if(oldLevel==0){
-                list.add(ChatColor.WHITE + "消耗经验值：100级");
-            }
-            if(oldLevel==1){
-                list.add(ChatColor.WHITE + "消耗经验值：200级");
-            }
-            if(oldLevel==2){
-                list.add(ChatColor.WHITE + "消耗经验值：500级");
-            }
-
-        }
-        if(enchantment==SoulEnchants.vision){
-
-            if(oldLevel==0){
-                list.add(ChatColor.WHITE + "消耗经验值：100级");
-            }
-            if(oldLevel==1){
-                list.add(ChatColor.WHITE + "消耗经验值：200级");
-            }
-            if(oldLevel==2){
-                list.add(ChatColor.WHITE + "消耗经验值：500级");
-            }
-
-        }
-        if(enchantment==SoulEnchants.diligent){
-
-            if(oldLevel==0){
-                list.add(ChatColor.WHITE + "消耗经验值:100级");
-            }
-            if(oldLevel==1){
-                list.add(ChatColor.WHITE + "消耗经验值：200级");
-            }
-            if(oldLevel==2){
-                list.add(ChatColor.WHITE + "消耗经验值：500级");
-            }
-
-        }
-
-        return list;
 
 
-    }
+
 
 
 
