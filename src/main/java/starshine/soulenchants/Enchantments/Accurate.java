@@ -1,5 +1,6 @@
 package starshine.soulenchants.Enchantments;
 
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.enchantments.EnchantmentTarget;
@@ -48,6 +49,6 @@ public class Accurate extends Enchantment {
 
     @Override
     public boolean canEnchantItem(ItemStack itemStack) {
-        return true;
+        return itemStack.getType() == Material.BOW;
     }
 }

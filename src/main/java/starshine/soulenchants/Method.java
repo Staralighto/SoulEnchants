@@ -153,6 +153,12 @@ public class Method {
             return;
         }
 
+        if(!enchantment.canEnchantItem(handItem)){
+            player.sendMessage(ChatColor.RED +"手上的物品类型不符合该附魔的要求");
+            return;
+        }
+
+
         Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchanting");
 
         ItemStack handItemCopy = new ItemStack(handItem);
@@ -477,12 +483,18 @@ public class Method {
 
         list.add(Material.STONE);
         list.add(Material.COBBLESTONE);
+        list.add(Material.GRANITE);
+        list.add(Material.DIORITE);
+        list.add(Material.ANDESITE);
         list.add(Material.SANDSTONE);
         list.add(Material.RED_SANDSTONE);
-        list.add(Material.END_STONE);
         list.add(Material.SMOOTH_STONE);
-        list.add(Material.BRICK);
-        list.add(Material.NETHERRACK);
+        list.add(Material.DIRT);
+        list.add(Material.GRASS_BLOCK);
+        list.add(Material.GRASS_BLOCK);
+        list.add(Material.MYCELIUM);
+        list.add(Material.PODZOL);
+
 
 
         return list;
