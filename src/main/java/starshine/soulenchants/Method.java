@@ -3,6 +3,7 @@ package starshine.soulenchants;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -10,17 +11,17 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Method {
 
@@ -90,7 +91,6 @@ public class Method {
         Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchants");
 
 
-
         List<Enchantment> list = Method.enchantmentList();
 
         for(int i=0;  i<list.size(); i++){
@@ -117,7 +117,7 @@ public class Method {
 
     public static void openEnchantMenu(Player player) {
 
-        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Handbook");
+        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchantments");
 
         List<String> soulBladeLore = Method.getEnchantConfig().getStringList("soul_blade.lore");
         Method.setSlotLore(inventory, SoulEnchants.soulBlade, 10, soulBladeLore);
@@ -142,78 +142,108 @@ public class Method {
 
     }
 
-    public static void openEnchantPrepareMenu(Player player, Enchantment enchantment){
+    public static void openProcessMenu(Player player, ItemStack itemStack, Enchantment enchantment){
 
-        String name = enchantment.getName();
+        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Process");
 
-        ItemStack handItem = player.getInventory().getItemInMainHand();
-
-        if(!enchantment.getItemTarget().includes(handItem.getType())){
-            player.sendMessage(ChatColor.RED +"手上的物品类型不符合该附魔的要求");
-            return;
-        }
-
-        if(!enchantment.canEnchantItem(handItem)){
-            player.sendMessage(ChatColor.RED +"手上的物品类型不符合该附魔的要求");
-            return;
-        }
-
-
-        Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Enchanting");
-
-        ItemStack handItemCopy = new ItemStack(handItem);
-
-
-        int currentLevel = 0;
-
-        //If the item have enchantment, update the current level.
-        if(handItem.getEnchantments().containsKey(enchantment)){
-             currentLevel = Method.getLevel(handItem,enchantment);
-        }
-
-        Method.addLore(handItemCopy,ChatColor.GOLD+Method.process(enchantment,currentLevel));
-
-
-
-
-
-
+        ItemStack whiteGlass = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
+        Method.setName(whiteGlass,"");
+        Method.addGlasses(inventory,whiteGlass);
 
         ItemStack enchantBook = new ItemStack(Material.ENCHANTED_BOOK);
+        String name = enchantment.getName();
         Method.setName(enchantBook,name);
         enchantBook.addUnsafeEnchantment(enchantment,enchantment.getMaxLevel());
 
-        ItemStack whiteGlass = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
-        Method.setName( whiteGlass," ");
-
-        ItemStack confirm = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
-        Method.setName(confirm, ChatColor.GREEN +  "确定");
-
-        ItemStack cancel = new ItemStack(Material.RED_STAINED_GLASS_PANE);
-        Method.setName(cancel,ChatColor.RED + "取消");
-
-
         inventory.setItem(4,enchantBook);
 
-        inventory.setItem(9,whiteGlass);
-        inventory.setItem(10,whiteGlass);
-        inventory.setItem(11,whiteGlass);
-        inventory.setItem(12,whiteGlass);
+        inventory.setItem(13,itemStack);
 
-        inventory.setItem(13,handItemCopy);
+        inventory.setItem(48,Method.confirmButton());
+        inventory.setItem(51,Method.cancelButton());
 
-        inventory.setItem(14,whiteGlass);
-        inventory.setItem(15,whiteGlass);
-        inventory.setItem(16,whiteGlass);
-        inventory.setItem(17,whiteGlass);
 
-        inventory.setItem(22,whiteGlass);
+    }
 
-        inventory.setItem(48,confirm);
-        inventory.setItem(50,cancel);
 
-        player.openInventory(inventory);
 
+    public static Enchantment findFirstCustomEnchant(ItemStack itemStack){
+
+        for(Enchantment enchantment: enchantmentList()){
+
+            if(itemStack.getEnchantments().containsKey(enchantment)){
+
+                return enchantment;
+
+            }
+
+        }
+
+        return null;
+
+
+    }
+
+    public static void addGlasses(Inventory inventory,ItemStack itemStack){
+
+
+        inventory.setItem(9,itemStack);
+        inventory.setItem(10,itemStack);
+        inventory.setItem(11,itemStack);
+        inventory.setItem(12,itemStack);
+        inventory.setItem(14,itemStack);
+        inventory.setItem(15,itemStack);
+        inventory.setItem(16,itemStack);
+        inventory.setItem(17,itemStack);
+        inventory.setItem(22,itemStack);
+
+    }
+
+    public static ItemStack confirmButton(){
+        ItemStack itemStack = new ItemStack(Material.GREEN_STAINED_GLASS_PANE);
+        Method.setName(itemStack, ChatColor.GREEN+"确认");
+        ItemMeta meta = itemStack.getItemMeta();
+        assert meta != null;
+        meta.setUnbreakable(true);
+        return itemStack;
+    }
+
+    public static boolean isConfirmButton(ItemStack itemStack){
+
+        if(itemStack.getType()!=Material.GREEN_STAINED_GLASS_PANE){
+            return false;
+        }
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        if(meta==null){
+            return false;
+        }
+        return meta.isUnbreakable();
+
+    }
+
+    public static ItemStack cancelButton(){
+        ItemStack itemStack = new ItemStack(Material.RED_STAINED_GLASS_PANE);
+        Method.setName(itemStack, ChatColor.GREEN+"取消");
+        ItemMeta meta = itemStack.getItemMeta();
+        assert meta != null;
+        meta.setUnbreakable(true);
+        return itemStack;
+    }
+
+    public static boolean isCancelButton(ItemStack itemStack){
+
+        if(itemStack.getType()!=Material.RED_STAINED_GLASS_PANE){
+            return false;
+        }
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        if(meta==null){
+            return false;
+        }
+        return meta.isUnbreakable();
 
     }
 
@@ -465,13 +495,6 @@ public class Method {
         list.add(Material.DIAMOND_ORE);
         list.add(Material.REDSTONE_ORE);
         list.add(Material.LAPIS_ORE);
-        list.add(Material.COPPER_ORE);
-        list.add(Material.DEEPSLATE_COAL_ORE);
-        list.add(Material.DEEPSLATE_GOLD_ORE);
-        list.add(Material.DEEPSLATE_DIAMOND_ORE);
-        list.add(Material.DEEPSLATE_REDSTONE_ORE);
-        list.add(Material.DEEPSLATE_LAPIS_ORE);
-        list.add(Material.DEEPSLATE_COPPER_ORE);
         list.add(Material.ANCIENT_DEBRIS);
 
         return list;
@@ -541,6 +564,22 @@ public class Method {
         }
     }
 
+    public static FileConfiguration getDataConfig(){
+
+        return YamlConfiguration.loadConfiguration(new File(SoulEnchants.getPlugin().getDataFolder(),"data.yml"));
+    }
+
+    public static void saveDataConfig(){
+
+        FileConfiguration config = Method.getEnchantConfig();
+
+        try {
+            config.save(new File(SoulEnchants.getPlugin().getDataFolder(), "data.yml"));
+        } catch (Exception ignored){
+
+        }
+    }
+
     public static void addPlentyMark(ItemStack itemStack){
 
         ItemMeta meta = itemStack.getItemMeta();
@@ -565,5 +604,75 @@ public class Method {
             return ageable.getAge() == ageable.getMaximumAge();
         }
         return false;
+    }
+
+    public static void initializeBasicData(ItemStack itemStack,Enchantment enchantment) {
+
+        UUID itemUUID = UUID.randomUUID();
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        NamespacedKey key = new NamespacedKey(JavaPlugin.getProvidingPlugin(SoulEnchants.class), "item_uuid");
+
+        meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, itemUUID.toString());
+
+        itemStack.setItemMeta(meta);
+
+        String type = "";
+
+        if(enchantment==SoulEnchants.soulBlade){
+            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "陵劲");
+        }
+        if(enchantment==SoulEnchants.chiseling){
+            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "凿石");
+        }
+        if(enchantment==SoulEnchants.plenty){
+            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "福临");
+        }
+        if(enchantment==SoulEnchants.accurate){
+            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "精准");
+        }
+        if(enchantment==SoulEnchants.diligent){
+            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "勤奋");
+        }
+        if(enchantment==SoulEnchants.vision){
+            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "夜视");
+        }
+
+        int level = Method.getDataConfig().getInt(itemUUID.toString() + ".level", 1);
+        int exp = Method.getDataConfig().getInt(itemUUID.toString() + ".exp", 0);
+        int nextLevelExp = Method.getDataConfig().getInt(itemUUID.toString() + ".next_level_exp", 200);
+        int chargeValue = Method.getDataConfig().getInt(itemUUID.toString() + ".charge_value", 0);
+        int skillCharge = Method.getDataConfig().getInt(itemUUID.toString() + ".skill_charge", 100);
+
+    }
+
+    public static UUID getUUID(ItemStack itemStack) {
+        NamespacedKey key = new NamespacedKey(JavaPlugin.getProvidingPlugin(SoulEnchants.class), "item_uuid");
+        String uuidString = itemStack.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.STRING);
+        return uuidString != null ? UUID.fromString(uuidString) : null;
+    }
+
+    public static String getDataTypeName(ItemStack itemStack){
+        UUID itemUUID = Method.getUUID(itemStack);
+        if(itemUUID!=null){
+            return Method.getDataConfig().getString(itemUUID.toString() + ".type");
+        }
+        return null;
+    }
+    public static int getDataLevel(ItemStack itemStack){
+        UUID itemUUID = Method.getUUID(itemStack);
+        if(itemUUID!=null){
+            return Method.getDataConfig().getInt(itemUUID.toString() + ".level");
+        }
+        return -1;
+    }
+    public static int getDataExp(ItemStack itemStack){
+        UUID itemUUID = Method.getUUID(itemStack);
+        if(itemUUID!=null){
+            return Method.getDataConfig().getInt(itemUUID.toString() + ".exp");
+        }
+        return -1;
     }
 }

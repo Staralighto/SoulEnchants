@@ -177,7 +177,7 @@ public class EventListener implements Listener {
 
         InventoryView inventoryView = player.getOpenInventory();
 
-        if (!inventoryView.getTitle().equals("SoulEnchants Handbook")) {
+        if (!inventoryView.getTitle().equals("SoulEnchants Enchantments")) {
             return;
         }
 
@@ -194,10 +194,12 @@ public class EventListener implements Listener {
             return;
         }
 
+        ItemStack handItem = player.getInventory().getItemInMainHand();
+
         for (Enchantment enchantment : Method.enchantmentList()) {
 
             if (enchantment.getName().equals(meta.getDisplayName())) {
-                Method.openEnchantPrepareMenu(player, enchantment);
+                Method.openProcessMenu(player,handItem,enchantment);
             }
 
         }
@@ -205,8 +207,10 @@ public class EventListener implements Listener {
 
     }
 
+
     @EventHandler
-    public static void onEnchantingMenu(InventoryClickEvent event) {
+    public static void onProcessMenu(InventoryClickEvent event){
+
         Inventory inventory = event.getInventory();
 
         if (!(event.getWhoClicked() instanceof Player)) {
@@ -217,67 +221,55 @@ public class EventListener implements Listener {
 
         InventoryView inventoryView = player.getOpenInventory();
 
-        if (!inventoryView.getTitle().equals("SoulEnchants Enchanting")) {
+        if (!inventoryView.getTitle().equals("SoulEnchants Process")) {
             return;
         }
 
-        event.setCancelled(true);
+        ItemStack clickedItem = event.getCurrentItem();
 
-        ItemStack currentItem = event.getCurrentItem();
-
-        if (currentItem == null) {
+        if(clickedItem==null){
             return;
         }
 
-        if (currentItem.getType().equals(Material.RED_STAINED_GLASS_PANE)) {
-            //Cancel the enchant event and come back to enchant menu
-            Method.openEnchantMenu(player);
+        if(Method.isConfirmButton(clickedItem)){
 
-        }
-
-        if (currentItem.getType().equals(Material.LIME_STAINED_GLASS_PANE)) {
-            //Confirm and start the enchanting process
             ItemStack enchantBook = inventory.getItem(4);
-            if (enchantBook == null) {
-                return;
-            }
-            Enchantment enchantment = null;
+            //Target item only for showing, same data as hand item
+            ItemStack targetItem = inventory.getItem(13);
 
-            //Find the target enchantment in the enchant book
-            for (Enchantment enchant : Method.enchantmentList()) {
-                if (enchantBook.getEnchantments().containsKey(enchant)) {
-                    enchantment = enchant;
-                    break;
-                }
-            }
+            if(enchantBook==null){return;}
+            if(targetItem==null){return;}
 
-            if (enchantment == null) {
-                return;
-            }
+            Enchantment enchantment = Method.findFirstCustomEnchant(enchantBook);
 
-            ItemStack handItem = player.getInventory().getItemInMainHand();
+            if(enchantment==null){return;}
 
             String name = enchantment.getName();
-            int level = Method.getLevel(handItem,enchantment);
 
-            if(level>=enchantment.getMaxLevel()){
-                player.sendMessage(ChatColor.WHITE + name + "附魔等级已经达到最大");
+            int currentLevel = Method.getLevel(targetItem,enchantment);
+
+            if(currentLevel>=enchantment.getMaxLevel()){
+                player.sendMessage(ChatColor.WHITE+name + ChatColor.GRAY+"附魔等级已达到最大");
                 return;
             }
 
-            int playerLevel = player.getLevel();
+            //Finally level up hand item , not the shown item.
+            ItemStack handItem = player.getInventory().getItemInMainHand();
+            Method.levelUp(handItem,enchantment);
+            player.sendMessage(ChatColor.WHITE+name + ChatColor.GRAY+"附魔等级成功提升");
+            player.closeInventory();
 
-            if (playerLevel < 100) {
-                player.sendMessage(ChatColor.WHITE + "玩家等级低于100，无法升级+" + name + "附魔");
-
-            } else {
-                player.sendMessage(ChatColor.WHITE + name + "附魔等级成功提升");
-                player.setLevel(playerLevel - 100);
-
-                Method.levelUp(handItem, enchantment);
-            }
 
         }
+
+        if(Method.isCancelButton(clickedItem)){
+           Method.openEnchantMenu(player);
+        }
+
+
+
+
+
 
 
     }

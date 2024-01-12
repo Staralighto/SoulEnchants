@@ -58,6 +58,13 @@
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
+
+        <repository>
+            <id>dakani</id>
+            <name>Dakani Nexus Repo</name>
+            <url>https://repo.dakanilabs.com/repository/public/</url>
+        </repository>
+
     </repositories>
 
     <dependencies>
@@ -66,6 +73,18 @@
             <artifactId>spigot-api</artifactId>
             <version>1.19-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
+
         </dependency>
+
+
+
     </dependencies>
+
+
+
+
+
+
+
+
 </project>

@@ -141,4 +141,20 @@ public final class SoulEnchants extends JavaPlugin {
         FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);
 
     }
+
+    private void loadDataConfig() {
+
+        File configFile = new File(getDataFolder(), "data.yml");
+
+        // 检查配置文件是否存在，如果不存在则创建默认的语言配置文件
+        if (!configFile.exists()) {
+            saveResource("data.yml", false);
+        }
+
+
+        FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);
+
+    }
+
+
 }
