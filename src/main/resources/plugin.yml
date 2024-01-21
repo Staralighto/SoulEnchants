@@ -8,3 +8,5 @@ commands:
     description: "This is the command of the plugin"
     aliases: [ soe ]
     permission: SoulEnchants.Main
+
+softdepend: [PlayerPoints]

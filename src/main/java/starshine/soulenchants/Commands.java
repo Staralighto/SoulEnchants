@@ -23,6 +23,13 @@ public class Commands implements CommandExecutor {
             Method.openEnchantMenu(player);
         }
 
+        if(strings.length==1 && strings[0].equals("uuid")){
+            Player player = (Player) commandSender;
+            ItemStack handItem = player.getInventory().getItemInMainHand();
+            String itemUUID = Method.getUUID(handItem);
+            player.sendMessage(itemUUID);
+        }
+
         if(strings.length==1 && strings[0].equals("furnace")){
 
             Player player = (Player) commandSender;
@@ -48,6 +55,32 @@ public class Commands implements CommandExecutor {
                 }
 
             }
+
+        }
+
+        if(strings.length==3 && strings[0].equals("item")&& strings[1].equals("setlevel")){
+
+            int level = Integer.parseInt(strings[2]);
+
+            Player player = (Player) commandSender;
+            ItemStack handItem = player.getInventory().getItemInMainHand();
+
+            Method.setUUIDLevel(handItem,level);
+
+            player.sendMessage("请确认物品等级是否改变，物品没有等级时该指令不会有任何变化");
+
+        }
+
+        if(strings.length==3 && strings[0].equals("item")&& strings[1].equals("setcharge")){
+
+            int chargeValue = Integer.parseInt(strings[2]);
+
+            Player player = (Player) commandSender;
+            ItemStack handItem = player.getInventory().getItemInMainHand();
+
+            Method.setUUIDChargeValue(handItem,chargeValue);
+
+            player.sendMessage("请确认物品充能是否改变，物品没有充能时该指令不会有任何变化");
 
         }
 

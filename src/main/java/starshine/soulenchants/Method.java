@@ -1,27 +1,38 @@
 package starshine.soulenchants;
 
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
+
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryInteractEvent;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.java.JavaPlugin;
+
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
-import java.io.IOException;
+
 import java.util.*;
+
+
 
 public class Method {
 
@@ -122,6 +133,7 @@ public class Method {
         List<String> soulBladeLore = Method.getEnchantConfig().getStringList("soul_blade.lore");
         Method.setSlotLore(inventory, SoulEnchants.soulBlade, 10, soulBladeLore);
 
+
         List<String> chiselingLore = Method.getEnchantConfig().getStringList("chiseling.lore");
         Method.setSlotLore(inventory, SoulEnchants.chiseling,12, chiselingLore);
 
@@ -137,6 +149,17 @@ public class Method {
         List<String> visionLore = Method.getEnchantConfig().getStringList("vision.lore");
         Method.setSlotLore(inventory, SoulEnchants.vision, 21, visionLore);
 
+        ItemStack pickaxe = new ItemStack(Material.NETHERITE_PICKAXE);
+        ItemStack handItem = player.getInventory().getItemInMainHand();
+        pickaxe.addEnchantment(Enchantment.DIG_SPEED,1);
+        Method.addLore(pickaxe,ChatColor.WHITE+"拥有凿石附魔的物品可以在");
+        Method.addLore(pickaxe,ChatColor.WHITE+"需要手持物品拥有附魔：凿石");
+        Method.addLore(pickaxe,ChatColor.WHITE+"点击升级效率附魔");
+        Method.addLore(pickaxe,ChatColor.WHITE+"消耗钻币："+Method.requirePointsForEfficiency(handItem));
+
+
+        inventory.setItem(49,pickaxe);
+
 
         player.openInventory(inventory);
 
@@ -144,26 +167,41 @@ public class Method {
 
     public static void openProcessMenu(Player player, ItemStack itemStack, Enchantment enchantment){
 
+        if(!enchantment.canEnchantItem(itemStack)){
+            player.sendMessage(ChatColor.RED+"手上物品不符合该附魔要求的类型");
+            return;
+        }
+
         Inventory inventory = Bukkit.createInventory(player, 54, "SoulEnchants Process");
 
-        ItemStack whiteGlass = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
-        Method.setName(whiteGlass,"");
-        Method.addGlasses(inventory,whiteGlass);
+        ItemStack blueGlass = new ItemStack(Material.BLUE_STAINED_GLASS_PANE);
+        Method.setName(blueGlass," ");
+        Method.addGlasses(inventory,blueGlass);
 
         ItemStack enchantBook = new ItemStack(Material.ENCHANTED_BOOK);
         String name = enchantment.getName();
         Method.setName(enchantBook,name);
         enchantBook.addUnsafeEnchantment(enchantment,enchantment.getMaxLevel());
 
+        int level = Method.getLevel(itemStack,enchantment);
+        String process = Method.process(enchantment,level);
+        Method.addLore(itemStack,process);
+        Method.addLore(itemStack, ChatColor.WHITE + "最低需求物品等级："+Method.requireLevel(itemStack,level));
+        Method.addLore(itemStack, ChatColor.AQUA + "消耗钻币：600");
+
         inventory.setItem(4,enchantBook);
 
         inventory.setItem(13,itemStack);
 
         inventory.setItem(48,Method.confirmButton());
-        inventory.setItem(51,Method.cancelButton());
+        inventory.setItem(50,Method.cancelButton());
+
+        player.openInventory(inventory);
 
 
     }
+
+
 
 
 
@@ -203,8 +241,9 @@ public class Method {
         ItemStack itemStack = new ItemStack(Material.GREEN_STAINED_GLASS_PANE);
         Method.setName(itemStack, ChatColor.GREEN+"确认");
         ItemMeta meta = itemStack.getItemMeta();
-        assert meta != null;
-        meta.setUnbreakable(true);
+        if(meta!=null){
+            meta.setUnbreakable(true);
+        }
         return itemStack;
     }
 
@@ -227,8 +266,9 @@ public class Method {
         ItemStack itemStack = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         Method.setName(itemStack, ChatColor.GREEN+"取消");
         ItemMeta meta = itemStack.getItemMeta();
-        assert meta != null;
-        meta.setUnbreakable(true);
+        if(meta!=null){
+            meta.setUnbreakable(true);
+        }
         return itemStack;
     }
 
@@ -263,7 +303,7 @@ public class Method {
         String name = enchantment.getName();
         String process = null;
 
-        process = name + Method.NUMERALS[currentLevel] + "->" + name + Method.NUMERALS[currentLevel+1];
+        process = ChatColor.GOLD + name + Method.NUMERALS[currentLevel] + "->" + name + Method.NUMERALS[currentLevel+1];
 
         if(currentLevel>=enchantment.getMaxLevel()){
             process = name + "附魔的等级已经达到最大";
@@ -324,6 +364,7 @@ public class Method {
 
     public static void levelUp(ItemStack itemStack, Enchantment enchantment){
 
+
         if(itemStack.getEnchantments().containsKey(enchantment)){
 
             int level = Method.getLevel(itemStack,enchantment);
@@ -337,9 +378,15 @@ public class Method {
         }else {
 
             itemStack.addUnsafeEnchantment(enchantment,1);
+
+            Method.makeItemData(itemStack,enchantment);
+
+
         }
 
         Method.checkEnchantLore(itemStack);
+
+        Method.checkExpLore(itemStack);
 
     }
 
@@ -359,7 +406,10 @@ public class Method {
             return;
         }
 
+
         Method.checkEnchantLore(itemStack);
+
+        Method.checkExpLore(itemStack);
 
     }
 
@@ -412,12 +462,9 @@ public class Method {
 
             }
 
-
-
             if(!replaced){
                 lore.add(fullName);
             }
-
 
 
             meta.setLore(lore);
@@ -425,6 +472,52 @@ public class Method {
             itemStack.setItemMeta(meta);
 
         }
+
+
+    }
+
+    public static void checkExpLore(ItemStack itemStack){
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        if(meta==null){
+            return;
+        }
+        List<String> lore = meta.getLore();
+
+        if(lore==null){
+            lore = new ArrayList<>();
+        }
+
+        boolean haveLevelLore = false;
+
+        for (String line : lore) {
+
+            if (line.contains("等级")) {
+                haveLevelLore = true;
+                break;
+            }
+        }
+        if(!haveLevelLore){
+            lore.add(ChatColor.GRAY+"等级: 1");
+        }
+
+        boolean haveExpLore = false;
+
+        for (String line : lore) {
+
+            if (line.contains("经验值")) {
+                haveExpLore = true;
+                break;
+            }
+        }
+        if(!haveExpLore){
+            lore.add(ChatColor.GRAY+"经验值: 0/100");
+        }
+
+        meta.setLore(lore);
+
+        itemStack.setItemMeta(meta);
 
 
     }
@@ -489,7 +582,7 @@ public class Method {
     public static List<Material> oreBlockList(){
 
         List<Material> list = new ArrayList<>();
-        list.add(Material.COAL);
+        list.add(Material.COAL_ORE);
         list.add(Material.IRON_ORE);
         list.add(Material.GOLD_ORE);
         list.add(Material.DIAMOND_ORE);
@@ -498,6 +591,26 @@ public class Method {
         list.add(Material.ANCIENT_DEBRIS);
 
         return list;
+    }
+
+    public static int getOreBlockExp(Block block){
+
+        int exp = 0;
+
+        HashMap<Material,Integer> map = new HashMap<>();
+        map.put(Material.COAL_ORE,1);
+        map.put(Material.IRON_ORE,2);
+        map.put(Material.GOLD_ORE,3);
+        map.put(Material.DIAMOND_ORE,10);
+        map.put(Material.REDSTONE_ORE,1);
+        map.put(Material.LAPIS_ORE,1);
+        map.put(Material.ANCIENT_DEBRIS,30);
+
+        if(map.get(block.getType())!=null){
+            exp = map.get(block.getType());
+        }
+
+        return exp;
     }
 
     public static List<Material> stoneBlockList(){
@@ -531,8 +644,6 @@ public class Method {
         cropList.add(Material.CARROTS);
         cropList.add(Material.POTATOES);
         cropList.add(Material.BEETROOTS);
-        cropList.add(Material.MELON_STEM);
-        cropList.add(Material.PUMPKIN_STEM);
         cropList.add(Material.NETHER_WART);
 
 
@@ -544,6 +655,7 @@ public class Method {
     public static void shootArrow(Player player){
 
         Arrow arrow = (Arrow) player.launchProjectile(Arrow.class);
+        arrow.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
         arrow.setVelocity(player.getEyeLocation().getDirection().multiply(3)); // 设置弓箭的速度
 
     }
@@ -566,17 +678,18 @@ public class Method {
 
     public static FileConfiguration getDataConfig(){
 
-        return YamlConfiguration.loadConfiguration(new File(SoulEnchants.getPlugin().getDataFolder(),"data.yml"));
+        return YamlConfiguration.loadConfiguration(new File(SoulEnchants.getPlugin().getDataFolder(), "itemdata.yml"));
     }
 
     public static void saveDataConfig(){
 
-        FileConfiguration config = Method.getEnchantConfig();
+        FileConfiguration config = Method.getDataConfig();
 
         try {
-            config.save(new File(SoulEnchants.getPlugin().getDataFolder(), "data.yml"));
-        } catch (Exception ignored){
-
+            config.save(new File(SoulEnchants.getPlugin().getDataFolder(), "itemdata.yml"));
+            Bukkit.broadcastMessage("Saving Config");
+        } catch (Exception e){
+            Bukkit.getLogger().warning(e.toString());
         }
     }
 
@@ -606,73 +719,449 @@ public class Method {
         return false;
     }
 
-    public static void initializeBasicData(ItemStack itemStack,Enchantment enchantment) {
 
-        UUID itemUUID = UUID.randomUUID();
+    public static boolean isContainEnchantment(ItemStack itemStack,Enchantment enchantment){
+
+        if(itemStack==null){
+            return false;
+        }
+        return itemStack.getEnchantments().containsKey(enchantment);
+
+
+    }
+
+
+
+    public static void makeItemData(ItemStack itemStack, Enchantment enchantment) {
+        String itemUUID = UUID.randomUUID().toString();
         ItemMeta meta = itemStack.getItemMeta();
-        if (meta == null) {
+        NamespacedKey key = new NamespacedKey(SoulEnchants.getPlugin(), "UUID");
+
+        assert meta != null;
+        meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, itemUUID);
+
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+
+        String name = enchantment.getName();
+
+        // 使用set方法将读取的值设置到对应的键上
+        config.set(itemUUID + ".typename", name);
+        config.set(itemUUID + ".level", 1);
+        config.set(itemUUID + ".exp", 0);
+        config.set(itemUUID + ".charge_value", 0);
+
+
+        // 保存配置文件
+        SoulEnchants.getPlugin().saveConfig();
+
+        itemStack.setItemMeta(meta);
+    }
+
+    public static String getUUID(ItemStack itemStack){
+        NamespacedKey key = new NamespacedKey(SoulEnchants.getPlugin(),"UUID");
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        assert meta != null;
+        String itemUUID =  meta.getPersistentDataContainer().get(key,PersistentDataType.STRING);
+
+        return itemUUID;
+
+    }
+
+    public static String getUUIDTypeName(ItemStack itemStack){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        return config.getString(itemUUID + ".typename",null);
+
+    }
+
+    public static void setUUIDTypeName(ItemStack itemStack,String typename){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        config.set(itemUUID + ".typename",typename);
+        SoulEnchants.getPlugin().saveConfig();
+
+    }
+
+    public static int getUUIDLevel(ItemStack itemStack){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        return config.getInt(itemUUID + ".level",1);
+
+    }
+
+    public static void setUUIDLevel(ItemStack itemStack,int level){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        config.set(itemUUID + ".level",level);
+        SoulEnchants.getPlugin().saveConfig();
+
+    }
+
+    public static int getUUIDExp(ItemStack itemStack){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        return config.getInt(itemUUID + ".exp",0);
+
+    }
+
+    public static void setUUIDExp(ItemStack itemStack,int exp){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        config.set(itemUUID + ".exp",exp);
+        Bukkit.broadcastMessage("exp set to "+ exp);
+        SoulEnchants.getPlugin().saveConfig();
+
+    }
+
+    public static int getUUIDChargeValue(ItemStack itemStack){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        return config.getInt(itemUUID + ".charge_value",1);
+
+    }
+
+    public static void setUUIDChargeValue(ItemStack itemStack,int chargeValue){
+
+        String itemUUID = Method.getUUID(itemStack);
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
+        config.set(itemUUID + ".charge_value",chargeValue);
+        SoulEnchants.getPlugin().saveConfig();
+
+    }
+
+    public static void updateUUIDLevelUp(ItemStack itemStack){
+
+        int itemExp = Method.getUUIDExp(itemStack);
+
+        if(itemExp>=100){
+
+            Method.setUUIDExp(itemStack,itemExp-100);
+
+            int itemLevel = Method.getUUIDLevel(itemStack);
+
+            Method.setUUIDLevel(itemStack,itemLevel+1);
+
+        }
+
+    }
+
+
+
+    public static void updateLevelUpLore(ItemStack itemStack){
+
+
+        ItemMeta meta = itemStack.getItemMeta();
+
+        if(meta==null){
             return;
         }
-        NamespacedKey key = new NamespacedKey(JavaPlugin.getProvidingPlugin(SoulEnchants.class), "item_uuid");
+        List<String> lore = meta.getLore();
 
-        meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, itemUUID.toString());
+        if(lore==null){
+            lore = new ArrayList<>();
+        }
+
+
+        for (int i=0;i<lore.size();i++) {
+
+            String line = lore.get(i);
+
+            if(line.contains("经验值")){
+                int UUIDExp = Method.getUUIDExp(itemStack);
+                //The content after 3rd character is exp
+                line = line.split(":")[0]+ ": " + UUIDExp;
+                lore.set(i,line);
+            }
+
+            if(line.contains("等级")){
+                int UUIDLevel = Method.getUUIDLevel(itemStack);
+                //The content after 3rd character is exp
+                line = line.split(":")[0]+ ": " + UUIDLevel;
+                lore.set(i,line);
+            }
+
+        }
+
+
+
+
+        meta.setLore(lore);
 
         itemStack.setItemMeta(meta);
 
-        String type = "";
+    }
 
-        if(enchantment==SoulEnchants.soulBlade){
-            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "陵劲");
-        }
-        if(enchantment==SoulEnchants.chiseling){
-            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "凿石");
-        }
-        if(enchantment==SoulEnchants.plenty){
-            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "福临");
-        }
-        if(enchantment==SoulEnchants.accurate){
-            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "精准");
-        }
-        if(enchantment==SoulEnchants.diligent){
-            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "勤奋");
-        }
-        if(enchantment==SoulEnchants.vision){
-            type = Method.getDataConfig().getString(itemUUID.toString() + ".type", "夜视");
+    public static BossBar skillProgressBar(Player player,ItemStack itemStack, Enchantment enchantment){
+
+        String name = enchantment.getName();
+        BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD +name, BarColor.BLUE, BarStyle.SOLID);
+        bossBar.setProgress(0.0);
+        int chargeValue = Method.getUUIDChargeValue(itemStack);
+        double skillProgress = (double) chargeValue / 100;
+
+        if(skillProgress< 0){
+            skillProgress = 0;
         }
 
-        int level = Method.getDataConfig().getInt(itemUUID.toString() + ".level", 1);
-        int exp = Method.getDataConfig().getInt(itemUUID.toString() + ".exp", 0);
-        int nextLevelExp = Method.getDataConfig().getInt(itemUUID.toString() + ".next_level_exp", 200);
-        int chargeValue = Method.getDataConfig().getInt(itemUUID.toString() + ".charge_value", 0);
-        int skillCharge = Method.getDataConfig().getInt(itemUUID.toString() + ".skill_charge", 100);
+        if(skillProgress>1.0){
+            skillProgress = 1.0;
+        }
+
+        bossBar.setProgress(skillProgress);
+
+        return bossBar;
+    }
+
+
+
+    public static void updateSkillProgress(ItemStack itemStack,BossBar bossBar){
+
+        if(bossBar==null){
+            return;
+        }
+
+        int chargeValue = Method.getUUIDChargeValue(itemStack);
+        double skillProgress = (double) chargeValue / 100;
+
+        if(skillProgress<=0){skillProgress=0;}
+        if(skillProgress>=1.0){skillProgress=1.0;}
+
+        bossBar.setProgress(skillProgress);
 
     }
 
-    public static UUID getUUID(ItemStack itemStack) {
-        NamespacedKey key = new NamespacedKey(JavaPlugin.getProvidingPlugin(SoulEnchants.class), "item_uuid");
-        String uuidString = itemStack.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.STRING);
-        return uuidString != null ? UUID.fromString(uuidString) : null;
+    public static void showSkillDurationBar(Player player, int duration){
+
+
+        BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD + "技能持续时间", BarColor.RED, BarStyle.SOLID);
+
+        bossBar.addPlayer(player);
+
+        bossBar.setProgress(1.0);
+
+        double time = (double) duration/20;
+
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 这里是任务执行的内容
+
+
+                double newProgress = bossBar.getProgress() - (1/time);
+
+
+                // 确保进度不小于0
+                if (newProgress < 0) {
+                    newProgress = 0;
+                }
+
+                // 设置新的进度
+                bossBar.setProgress(newProgress);
+
+
+            }
+
+        }.runTaskTimer(SoulEnchants.getPlugin(),0L,20L);
+
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{bossBar.removeAll();task.cancel();},duration);
+
+
     }
 
-    public static String getDataTypeName(ItemStack itemStack){
-        UUID itemUUID = Method.getUUID(itemStack);
-        if(itemUUID!=null){
-            return Method.getDataConfig().getString(itemUUID.toString() + ".type");
+    public static boolean unleashSkillCheck(PlayerInteractEvent event, Player player,ItemStack itemStack){
+
+        if (Method.skillPlayerItemMap.containsKey(player)) {
+            //if player already use skill, return it.
+            return false;
         }
-        return null;
-    }
-    public static int getDataLevel(ItemStack itemStack){
-        UUID itemUUID = Method.getUUID(itemStack);
-        if(itemUUID!=null){
-            return Method.getDataConfig().getInt(itemUUID.toString() + ".level");
+
+        if (!player.isSneaking()) {
+            return false;
         }
-        return -1;
-    }
-    public static int getDataExp(ItemStack itemStack){
-        UUID itemUUID = Method.getUUID(itemStack);
-        if(itemUUID!=null){
-            return Method.getDataConfig().getInt(itemUUID.toString() + ".exp");
+
+        if (!(event.getAction() == Action.RIGHT_CLICK_AIR) || !(event.getAction() == Action.RIGHT_CLICK_AIR)) {
+            return false;
         }
-        return -1;
+
+        return Method.getUUIDChargeValue(itemStack) >= 100;
+
     }
+
+
+
+    public static HashMap<Player,ItemStack> skillPlayerItemMap = new HashMap<>();
+
+    public static int requireLevel(ItemStack  itemStack, int enchantLevel){
+        if(enchantLevel==0){
+            //Level 0->1 require level
+            return 0;
+
+        }
+        if(enchantLevel==1){
+            //Level 1->2 require level
+            return 100;
+
+        }
+        if(enchantLevel==2){
+            //Level 2->3 require level
+            return 200;
+        }
+
+
+        return 99999;
+    }
+
+    public static boolean reachRequireLevel(ItemStack itemStack, int enchantLevel){
+
+        int UUIDLevel = Method.getUUIDLevel(itemStack);
+
+        if(enchantLevel==0){
+            //Level 0->1 require level
+            return true;
+
+        }
+        if(enchantLevel==1){
+            //Level 1->2 require level
+            if(UUIDLevel>=100){
+                return true;
+            }
+
+        }
+        if(enchantLevel==2){
+            //Level 2->3 require level
+            if(UUIDLevel>=200){
+                return true;
+            }
+
+        }
+
+
+        return false;
+
+
+
+    }
+
+    public static int requirePointsForEfficiency(ItemStack itemStack){
+
+        int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
+
+        if(level>=5 && level<10){
+            return 20;
+        }
+        if(level>=10 && level<12){
+            return 30;
+        }
+        if(level>=12 && level<16){
+            return 50;
+        }
+        if(level>=16 && level<18){
+            return 30;
+        }
+        if(level>=18 && level<20){
+            return 30;
+        }
+        if(level>=20 && level<25){
+            return 160;
+        }
+        if(level>=25 && level<30){
+            return 200;
+        }
+
+        return 200;
+
+    }
+
+    public static boolean checkPointsForEfficiency(ItemStack itemStack, Player player){
+        int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
+        int points = SoulEnchants.getPlayerPointsAPI().look(player.getUniqueId());
+
+        int requiredPoints = 0;
+
+
+        if (level >= 5 && level < 10) {
+            requiredPoints = 20;
+        } else if (level >= 10 && level < 12) {
+            requiredPoints = 30;
+        } else if (level >= 12 && level < 16) {
+            requiredPoints = 50;
+        } else if (level >= 16 && level < 18) {
+            requiredPoints = 30;
+        } else if (level >= 18 && level < 20) {
+            requiredPoints = 30;
+        } else if (level >= 20 && level < 25) {
+            requiredPoints = 160;
+        } else if (level >= 25 && level < 30) {
+            requiredPoints = 200;
+        } else if (level >= 30) {
+            requiredPoints = 200;
+        }
+
+        return points>=requiredPoints;
+
+
+
+    }
+    public static void takePointsForEfficiency(ItemStack itemStack, Player player){
+
+        int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
+        int pointsToTake = 0;
+
+        // 根据附魔等级判断具体的效果
+        if (level >= 5 && level < 10) {
+            pointsToTake = 20;
+        } else if (level >= 10 && level < 12) {
+            pointsToTake = 30;
+        } else if (level >= 12 && level < 16) {
+            pointsToTake = 50;
+        } else if (level >= 16 && level < 18) {
+            pointsToTake = 30;
+        } else if (level >= 18 && level < 20) {
+            pointsToTake = 30;
+        } else if (level >= 20 && level < 25) {
+            pointsToTake = 160;
+        } else if (level >= 25 && level < 30) {
+            pointsToTake = 200;
+        } else if (level >= 30) {
+            pointsToTake = 200;
+        }else {
+            player.sendMessage(ChatColor.RED + "拥有的钻币低于"+pointsToTake+"，无法强化效率附魔");
+            return;
+        }
+
+        // 扣取玩家点数
+        SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(), pointsToTake);
+
+        player.sendMessage(level+"");
+        player.sendMessage("已消耗"+pointsToTake+"钻币进行效率附魔升级");
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

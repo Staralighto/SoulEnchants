@@ -54,20 +54,23 @@
             <id>spigotmc-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+
         <repository>
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
 
         <repository>
-            <id>dakani</id>
-            <name>Dakani Nexus Repo</name>
-            <url>https://repo.dakanilabs.com/repository/public/</url>
+            <id>rosewood-repo</id>
+            <url>https://repo.rosewooddev.io/repository/public/</url>
         </repository>
+
 
     </repositories>
 
     <dependencies>
+
+
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
@@ -75,6 +78,18 @@
             <scope>provided</scope>
 
         </dependency>
+        <dependency>
+            <groupId>org.black_ixx</groupId>
+            <artifactId>playerpoints</artifactId>
+            <version>3.2.6</version>
+            <scope>provided</scope>
+        </dependency>
+
+
+
+
+
+
 
 
 
@@ -88,3 +103,4 @@
 
 
 </project>
+

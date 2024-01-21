@@ -1,17 +1,28 @@
 package starshine.soulenchants;
 
+
+
+import org.black_ixx.playerpoints.PlayerPoints;
+import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
+import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import starshine.soulenchants.Enchantments.*;
 
-import java.io.File;
+import java.io.*;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Vector;
+import java.util.List;
+import java.util.UUID;
+
 
 public final class SoulEnchants extends JavaPlugin {
     private static SoulEnchants plugin;
@@ -25,16 +36,33 @@ public final class SoulEnchants extends JavaPlugin {
     public static Enchantment vision;
     public static Enchantment diligent;
 
+    private PlayerPointsAPI ppAPI;
+
+
+
+
+
+
+
+
     @Override
     public void onEnable() {
         // Plugin startup logic
+
+
+
         plugin=this;
         instance=this;
 
         loadConfig();
         loadEnchantConfig();
+        loadDataConfig();
         saveDefaultConfig();
         saveConfig();
+
+
+
+
 
         soulBlade = new SoulBlade("soul_blade");
         chiseling = new Chiseling("chiseling");
@@ -51,6 +79,18 @@ public final class SoulEnchants extends JavaPlugin {
         Bukkit.getServer().getPluginCommand("soulenchants").setExecutor(new Commands());
         Bukkit.getPluginManager().registerEvents(new EventListener(), this);
 
+
+
+
+        if (Bukkit.getPluginManager().isPluginEnabled("PlayerPoints")) {
+            this.ppAPI = PlayerPoints.getInstance().getAPI();
+        }
+
+        // When you want to access the API, check if the instance is null
+        if (this.ppAPI != null) {
+            // Do stuff with the API here
+            Bukkit.broadcastMessage("PlayerPoint API connected");
+        }
 
 
 
@@ -86,6 +126,8 @@ public final class SoulEnchants extends JavaPlugin {
         } catch (Exception ignored) {
 
         }
+
+
     }
 
     public static SoulEnchants getInstance() {
@@ -95,6 +137,24 @@ public final class SoulEnchants extends JavaPlugin {
     public static SoulEnchants getPlugin() {
         return plugin;
     }
+
+    public static PlayerPointsAPI getPlayerPointsAPI(){
+        return SoulEnchants.getPlugin().ppAPI;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public static void registerEnchantment(Enchantment enchantment) {
         boolean registered = true;
@@ -144,17 +204,23 @@ public final class SoulEnchants extends JavaPlugin {
 
     private void loadDataConfig() {
 
-        File configFile = new File(getDataFolder(), "data.yml");
+        File configFile = new File(SoulEnchants.getPlugin().getDataFolder(), "itemdata.yml");
 
         // 检查配置文件是否存在，如果不存在则创建默认的语言配置文件
         if (!configFile.exists()) {
-            saveResource("data.yml", false);
+            saveResource("itemdata.yml", false);
         }
 
 
         FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);
 
     }
+
+
+
+
+
+
 
 
 }
