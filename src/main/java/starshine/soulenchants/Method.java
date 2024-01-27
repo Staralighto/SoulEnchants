@@ -687,7 +687,7 @@ public class Method {
 
         try {
             config.save(new File(SoulEnchants.getPlugin().getDataFolder(), "itemdata.yml"));
-            Bukkit.broadcastMessage("Saving Config");
+            //Bukkit.broadcastMessage("Saving Config");
         } catch (Exception e){
             Bukkit.getLogger().warning(e.toString());
         }
@@ -816,7 +816,7 @@ public class Method {
         String itemUUID = Method.getUUID(itemStack);
         FileConfiguration config = SoulEnchants.getPlugin().getConfig();
         config.set(itemUUID + ".exp",exp);
-        Bukkit.broadcastMessage("exp set to "+ exp);
+        //Bukkit.broadcastMessage("exp set to "+ exp);
         SoulEnchants.getPlugin().saveConfig();
 
     }
@@ -1147,6 +1147,69 @@ public class Method {
 
 
     }
+
+    public static Set<Player> unleashSkillPlayer = new HashSet<>();
+
+    public static void showUnleashSkillBar(Player player){
+
+        if(unleashSkillPlayer.contains(player)){
+            player.sendMessage("无法重复释放技能");
+            return;
+        }else {
+            unleashSkillPlayer.add(player);
+        }
+
+
+
+
+
+
+        BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD + "技能正在释放", BarColor.RED, BarStyle.SOLID);
+
+        bossBar.addPlayer(player);
+
+        bossBar.setProgress(0.0);
+
+
+
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 这里是任务执行的内容
+
+
+                double newProgress = bossBar.getProgress() + ((double) 1 /40);
+
+
+                // 确保进度不小于0
+                if (newProgress < 0) {
+                    newProgress = 0;
+                }
+                // 确保进度不大于1.0
+                if (newProgress > 1.0) {
+                    newProgress = 1.0;
+                }
+
+                // 设置新的进度
+                bossBar.setProgress(newProgress);
+
+
+            }
+
+        }.runTaskTimer(SoulEnchants.getPlugin(),0L,1L);
+
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+
+            bossBar.removeAll();
+            task.cancel();
+            unleashSkillPlayer.remove(player);
+
+        },40L);
+
+
+
+    }
+
 
 
 

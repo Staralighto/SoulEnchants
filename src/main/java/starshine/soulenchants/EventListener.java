@@ -27,6 +27,8 @@ import org.bukkit.metadata.FixedMetadataValue;
 
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.io.IOException;
@@ -36,6 +38,8 @@ import java.util.*;
 
 
 public class EventListener implements Listener {
+
+    public static Set<Player> unleashSkillPlayer = new HashSet<>();
 
     @EventHandler
     public static void onMainMenu(InventoryClickEvent event) {
@@ -287,11 +291,11 @@ public class EventListener implements Listener {
 
         event.setCancelled(true);
 
-        Bukkit.broadcastMessage("cancel event");
+        //Bukkit.broadcastMessage("cancel event");
 
         if(event.getSlot()==48){
 
-            Bukkit.broadcastMessage("confirm");
+            //Bukkit.broadcastMessage("confirm");
 
 
 
@@ -348,7 +352,7 @@ public class EventListener implements Listener {
 
         if(event.getSlot()==50){
            Method.openEnchantMenu(player);
-           Bukkit.broadcastMessage("cancel");
+           //Bukkit.broadcastMessage("cancel");
         }
 
 
@@ -612,6 +616,8 @@ public class EventListener implements Listener {
 
 
 
+
+
     @EventHandler
 
     public static void soulBladeEvent1(EntityDamageByEntityEvent event) {
@@ -711,24 +717,46 @@ public class EventListener implements Listener {
             return;
         }
 
-        int duration = 6000;
+        Method.showUnleashSkillBar(player);
 
-        PotionEffect speed = player.getPotionEffect(PotionEffectType.SPEED);
-        int speedAmplifier = 2;
-        if(speed!=null){
-            speedAmplifier = 2+ speed.getAmplifier();
-        }
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,duration,speedAmplifier));
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 这里是任务执行的内容
 
-        PotionEffect strength = player.getPotionEffect(PotionEffectType.INCREASE_DAMAGE);
-        int strengthAmplifier = 5;
-        if(strength!=null){
-            strengthAmplifier = 5+ strength.getAmplifier();
-        }
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,duration,strengthAmplifier));
+                ItemStack currentItem = player.getInventory().getItemInMainHand();
+                if(!Method.isContainEnchantment(currentItem,SoulEnchants.soulBlade)){
+                    player.sendMessage("技能已取消释放");
+                    this.cancel();
+                    return;
+                }
 
-        Method.setUUIDChargeValue(itemStack,0);
-        Method.showSkillDurationBar(player,duration);
+
+                int duration = 6000;
+
+                PotionEffect speed = player.getPotionEffect(PotionEffectType.SPEED);
+                int speedAmplifier = 2;
+                if(speed!=null){
+                    speedAmplifier = 2+ speed.getAmplifier();
+                }
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,duration,speedAmplifier));
+
+                PotionEffect strength = player.getPotionEffect(PotionEffectType.INCREASE_DAMAGE);
+                int strengthAmplifier = 5;
+                if(strength!=null){
+                    strengthAmplifier = 5+ strength.getAmplifier();
+                }
+                player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,duration,strengthAmplifier));
+
+                Method.setUUIDChargeValue(itemStack,0);
+                Method.showSkillDurationBar(player,duration);
+
+
+            }
+
+        }.runTaskLater(SoulEnchants.getPlugin(),40L);
+
+
 
 
 
@@ -922,19 +950,40 @@ public class EventListener implements Listener {
         }
 
 
-        int amplifier = 5;
 
-        PotionEffect effect = player.getPotionEffect(PotionEffectType.FAST_DIGGING);
-        if(effect!=null){
-            amplifier = 5+ effect.getAmplifier();
-        }
 
-        int duration = 6000;
+        Method.showUnleashSkillBar(player);
 
-        player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING,duration,amplifier));
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 这里是任务执行的内容
 
-        Method.setUUIDChargeValue(itemStack,0);
-        Method.showSkillDurationBar(player,duration);
+                ItemStack currentItem = player.getInventory().getItemInMainHand();
+                if(!Method.isContainEnchantment(currentItem,SoulEnchants.chiseling)){
+                    player.sendMessage("技能已取消释放");
+                    this.cancel();
+                    return;
+                }
+
+                int amplifier = 5;
+
+                PotionEffect effect = player.getPotionEffect(PotionEffectType.FAST_DIGGING);
+                if(effect!=null){
+                    amplifier = 5+ effect.getAmplifier();
+                }
+
+                int duration = 6000;
+
+                player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING,duration,amplifier));
+
+                Method.setUUIDChargeValue(itemStack,0);
+                Method.showSkillDurationBar(player,duration);
+
+
+            }
+
+        }.runTaskLater(SoulEnchants.getPlugin(),40L);
 
 
     }
@@ -1125,14 +1174,35 @@ public class EventListener implements Listener {
             return;
         }
 
-        plentySkillPlayers.add(player);
+        Method.showUnleashSkillBar(player);
 
-        int duration = 6000;
 
-        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{plentySkillPlayers.remove(player);},duration);
 
-        Method.setUUIDChargeValue(itemStack,0);
-        Method.showSkillDurationBar(player,duration);
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 这里是任务执行的内容
+
+                ItemStack currentItem = player.getInventory().getItemInMainHand();
+                if(!Method.isContainEnchantment(currentItem,SoulEnchants.plenty)){
+                    player.sendMessage("技能已取消释放");
+                    this.cancel();
+                    return;
+                }
+
+                plentySkillPlayers.add(player);
+
+                int duration = 6000;
+
+                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{plentySkillPlayers.remove(player);},duration);
+
+                Method.setUUIDChargeValue(itemStack,0);
+                Method.showSkillDurationBar(player,duration);
+
+
+            }
+
+        }.runTaskLater(SoulEnchants.getPlugin(),40L);
 
     }
 
@@ -1282,14 +1352,33 @@ public class EventListener implements Listener {
             return;
         }
 
-        int duration = 6000;
+        Method.showUnleashSkillBar(player);
 
-        accurateSkillPlayers.add(player);
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 这里是任务执行的内容
 
-        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{accurateSkillPlayers.remove(player);},duration);
+                ItemStack currentItem = player.getInventory().getItemInMainHand();
+                if(!Method.isContainEnchantment(currentItem,SoulEnchants.accurate)){
+                    player.sendMessage("技能已取消释放");
+                    this.cancel();
+                    return;
+                }
 
-        Method.setUUIDChargeValue(itemStack,0);
-        Method.showSkillDurationBar(player,duration);
+                int duration = 6000;
+
+                accurateSkillPlayers.add(player);
+
+                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{accurateSkillPlayers.remove(player);},duration);
+
+                Method.setUUIDChargeValue(itemStack,0);
+                Method.showSkillDurationBar(player,duration);
+
+
+            }
+
+        }.runTaskLater(SoulEnchants.getPlugin(),40L);
 
     }
 
