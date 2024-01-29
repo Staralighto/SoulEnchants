@@ -1,5 +1,6 @@
 package starshine.soulenchants;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -21,6 +22,19 @@ public class Commands implements CommandExecutor {
         if(strings.length==1 && strings[0].equals("handbook")){
             Player player = (Player) commandSender;
             Method.openEnchantMenu(player);
+        }
+
+        if(strings.length==2 && strings[0].equals("handbook")){
+            String playerName = strings[1];
+            Player player = Bukkit.getPlayer(playerName);
+            if(player==null){
+                commandSender.sendMessage("该玩家不存在或离线");
+                return false;
+            }
+            //sender.sendMessage("正在为玩家"+playerName+"开启附魔菜单");
+            Method.openEnchantMenu(player);
+            return true;
+
         }
 
         if(strings.length==1 && strings[0].equals("uuid")){

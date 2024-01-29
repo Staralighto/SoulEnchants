@@ -489,7 +489,7 @@ public class EventListener implements Listener {
                 return;
             }
             if (!block.hasMetadata("enchant_menu")) {
-                player.sendMessage("No Meta Data");
+                //player.sendMessage("No Meta Data");
                 return;
             }
 
