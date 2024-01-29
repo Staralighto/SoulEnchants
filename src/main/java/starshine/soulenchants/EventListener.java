@@ -329,11 +329,11 @@ public class EventListener implements Listener {
 
             //Cost the points to enchant
             int currentPoint = SoulEnchants.getPlayerPointsAPI().look(player.getUniqueId());
-
-            if(currentPoint>=600){
-                SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(),600);
+            int pointToTake = SoulEnchants.getPlugin().getConfig().getInt("points_on_enchant",200);
+            if(currentPoint>=pointToTake){
+                SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(),pointToTake);
             }else {
-                player.sendMessage(ChatColor.RED+"钻币数量不足600，无法进行附魔");
+                player.sendMessage(ChatColor.RED+"钻币数量不足"+pointToTake+"，无法进行附魔");
                 return;
             }
 
@@ -816,6 +816,10 @@ public class EventListener implements Listener {
 
                     if(Method.stoneBlockList().contains(nearByBlock.getType())){
                         nearByBlock.breakNaturally(tool);
+                        if(level==1){
+                            event.setCancelled(true);
+                            break;
+                        }
 
                     }
 
@@ -850,6 +854,10 @@ public class EventListener implements Listener {
 
                     if(Method.stoneBlockList().contains(nearByBlock.getType())){
                         nearByBlock.breakNaturally(tool);
+                        if(level==1){
+                            event.setCancelled(true);
+                            break;
+                        }
 
                     }
 
@@ -877,6 +885,10 @@ public class EventListener implements Listener {
 
                     if(Method.stoneBlockList().contains(nearByBlock.getType())){
                         nearByBlock.breakNaturally(tool);
+                        if(level==1){
+                            event.setCancelled(true);
+                            break;
+                        }
 
                     }
 
@@ -1041,7 +1053,23 @@ public class EventListener implements Listener {
 
                 block.getDrops().clear();
 
-                block.getWorld().dropItemNaturally(block.getLocation(),drop);
+                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+                    Location location = block.getLocation();
+                    World world = location.getWorld();
+                    if(world==null){
+                        return;
+                    }
+                    if(location.getBlock().getType()!=Material.AIR){
+                        return;
+                    }
+                    Particle particle = Particle.CLOUD;
+                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
+                    block.getWorld().dropItemNaturally(block.getLocation(),drop);
+
+                },2L);
+
+
+
             }
 
         }
@@ -1059,7 +1087,20 @@ public class EventListener implements Listener {
 
                 block.getDrops().clear();
 
-                block.getWorld().dropItemNaturally(block.getLocation(),drop);
+                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+                    Location location = block.getLocation();
+                    World world = location.getWorld();
+                    if(world==null){
+                        return;
+                    }
+                    if(location.getBlock().getType()!=Material.AIR){
+                        return;
+                    }
+                    Particle particle = Particle.CLOUD;
+                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
+                    block.getWorld().dropItemNaturally(block.getLocation(),drop);
+
+                },1L);
 
 
 
@@ -1085,7 +1126,20 @@ public class EventListener implements Listener {
 
                 block.getDrops().clear();
 
-                block.getWorld().dropItemNaturally(block.getLocation(),drop);
+                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+                    Location location = block.getLocation();
+                    World world = location.getWorld();
+                    if(world==null){
+                        return;
+                    }
+                    if(location.getBlock().getType()!=Material.AIR){
+                        return;
+                    }
+                    Particle particle = Particle.CLOUD;
+                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
+                    block.getWorld().dropItemNaturally(block.getLocation(),drop);
+
+                },1L);
             }
 
         }

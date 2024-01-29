@@ -18,6 +18,7 @@ import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
@@ -636,6 +637,8 @@ public class Method {
         return list;
     }
 
+
+
     public static List<Material> corpList(){
 
         List<Material> cropList = new ArrayList<>();
@@ -980,7 +983,7 @@ public class Method {
     public static boolean unleashSkillCheck(PlayerInteractEvent event, Player player,ItemStack itemStack){
 
         if (Method.skillPlayerItemMap.containsKey(player)) {
-            //if player already use skill, return it.
+            //if player already use skill, return false.
             return false;
         }
 
@@ -1056,28 +1059,19 @@ public class Method {
         int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
 
         if(level>=5 && level<10){
+            return 5;
+        }else if(level >= 10 && level<20){
+            return 10;
+        }else if(level>=20 && level<30){
             return 20;
-        }
-        if(level>=10 && level<12){
+        }else if(level>=30 && level<40){
             return 30;
-        }
-        if(level>=12 && level<16){
+        }else if(level>=40){
             return 50;
         }
-        if(level>=16 && level<18){
-            return 30;
-        }
-        if(level>=18 && level<20){
-            return 30;
-        }
-        if(level>=20 && level<25){
-            return 160;
-        }
-        if(level>=25 && level<30){
-            return 200;
-        }
 
-        return 200;
+
+        return 50;
 
     }
 
@@ -1089,21 +1083,15 @@ public class Method {
 
 
         if (level >= 5 && level < 10) {
+            requiredPoints = 5;
+        } else if(level >= 10 && level<20){
+            requiredPoints =10;
+        }else if(level>=20 && level<30){
             requiredPoints = 20;
-        } else if (level >= 10 && level < 12) {
+        }else if(level>=30 && level<40){
             requiredPoints = 30;
-        } else if (level >= 12 && level < 16) {
+        }else if(level>=40){
             requiredPoints = 50;
-        } else if (level >= 16 && level < 18) {
-            requiredPoints = 30;
-        } else if (level >= 18 && level < 20) {
-            requiredPoints = 30;
-        } else if (level >= 20 && level < 25) {
-            requiredPoints = 160;
-        } else if (level >= 25 && level < 30) {
-            requiredPoints = 200;
-        } else if (level >= 30) {
-            requiredPoints = 200;
         }
 
         return points>=requiredPoints;
@@ -1118,21 +1106,15 @@ public class Method {
 
         // 根据附魔等级判断具体的效果
         if (level >= 5 && level < 10) {
+            pointsToTake = 5;
+        } else if(level >= 10 && level<20){
+            pointsToTake =10;
+        }else if(level>=20 && level<30){
             pointsToTake = 20;
-        } else if (level >= 10 && level < 12) {
+        }else if(level>=30 && level<40){
             pointsToTake = 30;
-        } else if (level >= 12 && level < 16) {
+        }else if(level>=40){
             pointsToTake = 50;
-        } else if (level >= 16 && level < 18) {
-            pointsToTake = 30;
-        } else if (level >= 18 && level < 20) {
-            pointsToTake = 30;
-        } else if (level >= 20 && level < 25) {
-            pointsToTake = 160;
-        } else if (level >= 25 && level < 30) {
-            pointsToTake = 200;
-        } else if (level >= 30) {
-            pointsToTake = 200;
         }else {
             player.sendMessage(ChatColor.RED + "拥有的钻币低于"+pointsToTake+"，无法强化效率附魔");
             return;
@@ -1141,7 +1123,6 @@ public class Method {
         // 扣取玩家点数
         SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(), pointsToTake);
 
-        player.sendMessage(level+"");
         player.sendMessage("已消耗"+pointsToTake+"钻币进行效率附魔升级");
 
 
