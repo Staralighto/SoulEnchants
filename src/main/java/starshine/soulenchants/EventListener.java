@@ -1,6 +1,8 @@
 package starshine.soulenchants;
 
 
+import jdk.internal.org.jline.utils.ShutdownHooks;
+import jdk.javadoc.internal.doclint.HtmlTag;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -325,15 +327,13 @@ public class EventListener implements Listener {
             }
 
 
-
-
             //Cost the points to enchant
             int currentPoint = SoulEnchants.getPlayerPointsAPI().look(player.getUniqueId());
-            int pointToTake = SoulEnchants.getPlugin().getConfig().getInt("points_on_enchant",200);
-            if(currentPoint>=pointToTake){
-                SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(),pointToTake);
+            int requirePoint = SoulEnchants.getPlugin().getConfig().getInt("points_on_enchant",200);
+            if(currentPoint>=requirePoint){
+                SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(),requirePoint);
             }else {
-                player.sendMessage(ChatColor.RED+"钻币数量不足"+pointToTake+"，无法进行附魔");
+                player.sendMessage(ChatColor.RED+"钻币数量不足"+requirePoint+"，无法进行附魔");
                 return;
             }
 
@@ -777,6 +777,9 @@ public class EventListener implements Listener {
 
         int level = Method.getLevel(tool, enchantment);
 
+
+
+
         if (level == 1) {
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 20, 0, false, false, false));
         }
@@ -785,6 +788,9 @@ public class EventListener implements Listener {
         }
 
         Block block = event.getBlock();
+        Material oldBlockType = block.getType();
+
+        //Bukkit.broadcastMessage(""+block.getType());
         BlockFace face = player.getFacing();
         World world = block.getWorld();
 
@@ -798,31 +804,42 @@ public class EventListener implements Listener {
 
         Vector direction = player.getLocation().getDirection();
 
+        boolean faceToSky = false;
+        boolean triggered = false;
+        int nearByBlockAir = 0;
+
+
+
         // 检查玩家是否朝向天空（Y轴正方向）
         if (direction.getY() > 0.7 || direction.getY() < -0.7) {
 
+            faceToSky = true;
+
             for (int x = centerX - 1; x < centerX + 2; x++) {
                 for (int z = centerZ - 1; z < centerZ + 2; z++) {
+
+                    if(x==centerX && z==centerZ){
+                        continue;
+                    }
+
+                    if(triggered){
+                        continue;
+                    }
 
                     Location location = new Location(world, x, centerY, z);
                     Block nearByBlock = location.getBlock();
 
                     if (nearByBlock.getType() == Material.AIR) {
-                        continue;
-                    }
-                    if (nearByBlock.getType() == Material.BEDROCK) {
+                        nearByBlockAir++;
                         continue;
                     }
 
                     if(Method.stoneBlockList().contains(nearByBlock.getType())){
                         nearByBlock.breakNaturally(tool);
                         if(level==1){
-                            event.setCancelled(true);
-                            break;
+                            triggered = true;
                         }
-
                     }
-
 
 
 
@@ -831,74 +848,97 @@ public class EventListener implements Listener {
             }
 
 
-            return;
         }
+
+
 
 
         if (face == BlockFace.NORTH || face == BlockFace.SOUTH) {
 
-            for (int x = centerX - 1; x < centerX + 2; x++) {
-                for (int y = centerY - 1; y < centerY + 2; y++) {
+            if (!faceToSky) {
 
-                    Location location = new Location(world, x, y, centerZ);
-                    Block nearByBlock = location.getBlock();
+                for (int x = centerX - 1; x < centerX + 2; x++) {
+                    for (int y = centerY - 1; y < centerY + 2; y++) {
 
-                    if (nearByBlock.getType() == Material.AIR) {
-                        continue;
-                    }
-
-                    if (nearByBlock.getType() == Material.BEDROCK) {
-                        continue;
-                    }
-
-
-                    if(Method.stoneBlockList().contains(nearByBlock.getType())){
-                        nearByBlock.breakNaturally(tool);
-                        if(level==1){
-                            event.setCancelled(true);
-                            break;
+                        if(x==centerX && y==centerY){
+                            continue;
                         }
 
-                    }
+                        if (triggered) {
+                            continue;
+                        }
 
+                        Location location = new Location(world, x, y, centerZ);
+                        Block nearByBlock = location.getBlock();
+
+                        if (nearByBlock.getType() == Material.AIR) {
+                            nearByBlockAir++;
+                            continue;
+                        }
+
+                        if (Method.stoneBlockList().contains(nearByBlock.getType())) {
+                            nearByBlock.breakNaturally(tool);
+                            if (level == 1) {
+                                triggered = true;
+                            }
+                        }
+
+
+                    }
 
                 }
 
-            }
-            return;
 
+            }
         }
         if (face == BlockFace.EAST || face == BlockFace.WEST) {
 
-            for (int z = centerZ - 1; z < centerZ + 2; z++) {
-                for (int y = centerY - 1; y < centerY + 2; y++) {
+            if (!faceToSky) {
 
-                    Location location = new Location(world, centerX, y, z);
-                    Block nearByBlock = location.getBlock();
-                    if (nearByBlock.getType() == Material.AIR) {
-                        continue;
-                    }
-                    if (nearByBlock.getType() == Material.BEDROCK) {
-                        continue;
-                    }
+                for (int z = centerZ - 1; z < centerZ + 2; z++) {
+                    for (int y = centerY - 1; y < centerY + 2; y++) {
 
-
-                    if(Method.stoneBlockList().contains(nearByBlock.getType())){
-                        nearByBlock.breakNaturally(tool);
-                        if(level==1){
-                            event.setCancelled(true);
-                            break;
+                        if(z==centerZ && y==centerY){
+                            continue;
                         }
 
-                    }
+                        if (triggered) {
+                            continue;
+                        }
 
+                        Location location = new Location(world, centerX, y, z);
+                        Block nearByBlock = location.getBlock();
+                        if (nearByBlock.getType() == Material.AIR) {
+                            nearByBlockAir++;
+                            continue;
+                        }
+
+                        if (Method.stoneBlockList().contains(nearByBlock.getType())) {
+                            nearByBlock.breakNaturally(tool);
+                            if (level == 1) {
+                                triggered = true;
+                            }
+                        }
+
+
+                    }
 
                 }
 
             }
-            return;
-
         }
+
+        if(triggered && nearByBlockAir<8){
+            Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+                Block afterBlock = world.getBlockAt(block.getLocation());
+                afterBlock.setType(oldBlockType,true);
+                //Bukkit.broadcastMessage("复原"+block.getType());
+            },1L);
+        }
+
+
+
+
 
 
     }
@@ -1010,7 +1050,9 @@ public class EventListener implements Listener {
 
         Block block = event.getBlock();
 
-        if (!Method.oreBlockList().contains(block.getType())) {
+        Material blockType = block.getType();
+
+        if (!Method.oreBlockList().contains(blockType)) {
             return;
         }
 
@@ -1025,124 +1067,74 @@ public class EventListener implements Listener {
 
         int level = Method.getLevel(tool, enchantment);
 
-        int doubleChance = 0;
 
-        int tripleChance = 0;
-
-
-
-        if(level==1){doubleChance=Method.getEnchantConfig().getInt("plenty.level1",20);}
-
-        if(level>=2){doubleChance=Method.getEnchantConfig().getInt("plenty.level2",100);}
-
-        if(level>=3){tripleChance=Method.getEnchantConfig().getInt("plenty.level3",20);}
-
-        boolean tripleOccur = false;
 
         List<ItemStack> drops = (List<ItemStack>) block.getDrops();
 
-        if(plentySkillPlayers.contains(player)){
+        Method.addPlentyMark(drops);
 
-            for (ItemStack drop : drops) {
 
-                int amount = drop.getAmount();
 
-                drop.setAmount(amount*2);
 
-                Method.addPlentyMark(drop);
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
 
-                block.getDrops().clear();
+                if(!Method.checkPlentyBrokeBlock(block)){
+                    return;
+                }
+                int doubleChance = 0;
 
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
-                    Location location = block.getLocation();
-                    World world = location.getWorld();
-                    if(world==null){
-                        return;
+                int tripleChance = 0;
+
+                if(level==1){doubleChance=Method.getEnchantConfig().getInt("plenty.level1",20);}
+
+                if(level>=2){doubleChance=Method.getEnchantConfig().getInt("plenty.level2",100);}
+
+                if(level>=3){tripleChance=Method.getEnchantConfig().getInt("plenty.level3",100);}
+
+                for(ItemStack drop : drops){
+
+                    int amount = drop.getAmount();
+
+                    if(new Random().nextInt(100)<doubleChance){
+                        amount++;
                     }
-                    if(location.getBlock().getType()!=Material.AIR){
-                        return;
+
+                    if(new Random().nextInt(100)<tripleChance){
+                        amount++;
                     }
-                    Particle particle = Particle.CLOUD;
-                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
+
+                    if(plentySkillPlayers.contains(player)){
+                        amount++;
+                    }
+
+                    if(tool.getEnchantments().containsKey(Enchantment.LOOT_BONUS_BLOCKS)){
+
+                        for(int i=0;i<tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS);i++){
+                            if(new Random().nextInt(100)<25){
+                                amount++;
+                            }
+
+                        }
+
+                    }
+
+                    drop.setAmount(amount);
+
                     block.getWorld().dropItemNaturally(block.getLocation(),drop);
 
-                },2L);
 
-
+                }
 
             }
 
-        }
-
-        if(new Random().nextInt(100)< tripleChance){
-
-
-            for (ItemStack drop : drops) {
-
-                int amount = drop.getAmount();
-
-                drop.setAmount(amount*3);
-
-                Method.addPlentyMark(drop);
-
-                block.getDrops().clear();
-
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
-                    Location location = block.getLocation();
-                    World world = location.getWorld();
-                    if(world==null){
-                        return;
-                    }
-                    if(location.getBlock().getType()!=Material.AIR){
-                        return;
-                    }
-                    Particle particle = Particle.CLOUD;
-                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
-                    block.getWorld().dropItemNaturally(block.getLocation(),drop);
-
-                },1L);
+        }.runTaskLater(SoulEnchants.getPlugin(),5L);
 
 
 
-            }
-
-            tripleOccur = true;
-        }
-
-        if(tripleOccur){
-            return;
-        }
-
-        if (new Random().nextInt(100) < doubleChance) {
 
 
-            for (ItemStack drop : drops) {
-
-                int amount = drop.getAmount();
-
-                drop.setAmount(amount*2);
-
-                Method.addPlentyMark(drop);
-
-                block.getDrops().clear();
-
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
-                    Location location = block.getLocation();
-                    World world = location.getWorld();
-                    if(world==null){
-                        return;
-                    }
-                    if(location.getBlock().getType()!=Material.AIR){
-                        return;
-                    }
-                    Particle particle = Particle.CLOUD;
-                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
-                    block.getWorld().dropItemNaturally(block.getLocation(),drop);
-
-                },1L);
-            }
-
-        }
 
 
 

@@ -1,10 +1,7 @@
 package starshine.soulenchants;
 
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.boss.BarColor;
@@ -188,7 +185,9 @@ public class Method {
         String process = Method.process(enchantment,level);
         Method.addLore(itemStack,process);
         Method.addLore(itemStack, ChatColor.WHITE + "最低需求物品等级："+Method.requireLevel(itemStack,level));
-        Method.addLore(itemStack, ChatColor.AQUA + "消耗钻币：600");
+        //Display the point cost base on the config
+        int requirePoint = SoulEnchants.getPlugin().getConfig().getInt("points_on_enchant",200);
+        Method.addLore(itemStack, ChatColor.AQUA + "消耗钻币："+requirePoint);
 
         inventory.setItem(4,enchantBook);
 
@@ -589,10 +588,38 @@ public class Method {
         list.add(Material.DIAMOND_ORE);
         list.add(Material.REDSTONE_ORE);
         list.add(Material.LAPIS_ORE);
+        list.add(Material.EMERALD_ORE);
         list.add(Material.ANCIENT_DEBRIS);
 
         return list;
     }
+
+    public static List<Material> fortuneBlockList(){
+
+        List<Material> list = new ArrayList<>();
+        list.add(Material.COAL_ORE);
+        list.add(Material.DIAMOND_ORE);
+        list.add(Material.REDSTONE_ORE);
+        list.add(Material.LAPIS_ORE);
+        list.add(Material.EMERALD_ORE);
+
+        return list;
+    }
+
+    public static boolean checkPlentyBrokeBlock(Block block){
+        Location location = block.getLocation();
+        World world = location.getWorld();
+        if(world==null){
+            return false;
+        }
+        if(location.getBlock().getType()!=Material.AIR){
+            return false;
+        }
+        Particle particle = Particle.CLOUD;
+        world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
+        return true;
+    }
+
 
     public static int getOreBlockExp(Block block){
 
@@ -696,22 +723,24 @@ public class Method {
         }
     }
 
-    public static void addPlentyMark(ItemStack itemStack){
+    public static void addPlentyMark(List<ItemStack> list) {
 
-        ItemMeta meta = itemStack.getItemMeta();
+        for (ItemStack itemStack : list) {
+            ItemMeta meta = itemStack.getItemMeta();
 
-        int plentyMark = SoulEnchants.getPlugin().getConfig().getInt("plenty_mark",800250);
+            int plentyMark = SoulEnchants.getPlugin().getConfig().getInt("plenty_mark", 800250);
 
-        if(meta==null){
-            return;
+            if (meta == null) {
+                return;
+            }
+
+            meta.setCustomModelData(plentyMark);
+
+            meta.setUnbreakable(true);
+
+            itemStack.setItemMeta(meta);
+
         }
-
-        meta.setCustomModelData(plentyMark);
-
-        meta.setUnbreakable(true);
-
-        itemStack.setItemMeta(meta);
-
     }
 
     public static boolean isFullyGrown(Block cropBlock) {
@@ -1058,20 +1087,25 @@ public class Method {
 
         int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
 
-        if(level>=5 && level<10){
-            return 5;
-        }else if(level >= 10 && level<20){
-            return 10;
-        }else if(level>=20 && level<30){
-            return 20;
-        }else if(level>=30 && level<40){
-            return 30;
-        }else if(level>=40){
-            return 50;
+        int requirePoints = 50;
+
+        if(level>=0){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase1",5);
+        }
+        if(level>=10){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase2",10);
+        }
+        if(level>=20){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase3",20);
+        }
+        if(level>=30){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase4",30);
+        }
+        if(level>=40){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase5",50);
         }
 
-
-        return 50;
+        return requirePoints;
 
     }
 
@@ -1079,22 +1113,25 @@ public class Method {
         int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
         int points = SoulEnchants.getPlayerPointsAPI().look(player.getUniqueId());
 
-        int requiredPoints = 0;
+        int requirePoints = 50;
 
-
-        if (level >= 5 && level < 10) {
-            requiredPoints = 5;
-        } else if(level >= 10 && level<20){
-            requiredPoints =10;
-        }else if(level>=20 && level<30){
-            requiredPoints = 20;
-        }else if(level>=30 && level<40){
-            requiredPoints = 30;
-        }else if(level>=40){
-            requiredPoints = 50;
+        if(level>=0){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase1",5);
+        }
+        if(level>=10){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase2",10);
+        }
+        if(level>=20){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase3",20);
+        }
+        if(level>=30){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase4",30);
+        }
+        if(level>=40){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase5",50);
         }
 
-        return points>=requiredPoints;
+        return points>=requirePoints;
 
 
 
@@ -1102,28 +1139,31 @@ public class Method {
     public static void takePointsForEfficiency(ItemStack itemStack, Player player){
 
         int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
-        int pointsToTake = 0;
+
 
         // 根据附魔等级判断具体的效果
-        if (level >= 5 && level < 10) {
-            pointsToTake = 5;
-        } else if(level >= 10 && level<20){
-            pointsToTake =10;
-        }else if(level>=20 && level<30){
-            pointsToTake = 20;
-        }else if(level>=30 && level<40){
-            pointsToTake = 30;
-        }else if(level>=40){
-            pointsToTake = 50;
-        }else {
-            player.sendMessage(ChatColor.RED + "拥有的钻币低于"+pointsToTake+"，无法强化效率附魔");
-            return;
+        int requirePoints = 50;
+
+        if(level>=0){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase1",5);
+        }
+        if(level>=10){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase2",10);
+        }
+        if(level>=20){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase3",20);
+        }
+        if(level>=30){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase4",30);
+        }
+        if(level>=40){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase5",50);
         }
 
         // 扣取玩家点数
-        SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(), pointsToTake);
+        SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(), requirePoints);
 
-        player.sendMessage("已消耗"+pointsToTake+"钻币进行效率附魔升级");
+        player.sendMessage("已消耗"+requirePoints+"钻币进行效率附魔升级");
 
 
 
@@ -1139,10 +1179,6 @@ public class Method {
         }else {
             unleashSkillPlayer.add(player);
         }
-
-
-
-
 
 
         BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD + "技能正在释放", BarColor.RED, BarStyle.SOLID);
@@ -1166,7 +1202,7 @@ public class Method {
                 if (newProgress < 0) {
                     newProgress = 0;
                 }
-                // 确保进度不大于1.0
+                // 确保进度不大于1.0w
                 if (newProgress > 1.0) {
                     newProgress = 1.0;
                 }
