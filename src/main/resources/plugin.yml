@@ -8,5 +8,10 @@ commands:
     description: "This is the command of the plugin"
     aliases: [ soe ]
     permission: SoulEnchants.Main
+  soulenchantsfix:
+    description: "This is the fixed command of the plugin"
+    aliases: [ soefix ]
+
+
 
 softdepend: [PlayerPoints]

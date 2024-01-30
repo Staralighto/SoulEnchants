@@ -77,6 +77,8 @@ public final class SoulEnchants extends JavaPlugin {
         }
 
         Bukkit.getServer().getPluginCommand("soulenchants").setExecutor(new Commands());
+        Bukkit.getServer().getPluginCommand("soulenchantsfix").setExecutor(new FixedCommand());
+
         Bukkit.getPluginManager().registerEvents(new EventListener(), this);
 
 
@@ -183,7 +185,6 @@ public final class SoulEnchants extends JavaPlugin {
         if (!configFile.exists()) {
             saveResource("config.yml", false);
         }
-
 
         FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);
 

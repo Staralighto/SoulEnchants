@@ -1,16 +1,14 @@
 package starshine.soulenchants;
 
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 
+import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
@@ -70,6 +68,19 @@ public class Method {
         Method.setName(furnace, ChatColor.AQUA + "获得附魔熔炉" );
         Method.addLore(furnace, ChatColor.WHITE + "放置后可以右键打开强化菜单");
 
+        ItemStack beacon = new ItemStack(Material.BEACON);
+        Method.setName(beacon, ChatColor.AQUA + "物品充能" );
+        Method.addLore(beacon, ChatColor.WHITE + "将手上物品的能量设置为100");
+
+        ItemStack nameTag = new ItemStack(Material.NAME_TAG);
+        Method.setName(nameTag, ChatColor.AQUA + "UUID查询" );
+        Method.addLore(nameTag, ChatColor.WHITE + "查询手上物品的UUID");
+
+        ItemStack anvil = new ItemStack(Material.ANVIL);
+        Method.setName(anvil, ChatColor.AQUA + "通过lore修复附魔" );
+        Method.addLore(anvil, ChatColor.WHITE + "通过查询lore找回手上物品丢失的附魔");
+
+
         ItemStack paper = new ItemStack(Material.PAPER);
 
 
@@ -79,9 +90,9 @@ public class Method {
         inventory.setItem(10, enchantMenu);
         inventory.setItem(12, handbook);
         inventory.setItem(14, furnace);
-        inventory.setItem(16, paper);
-        inventory.setItem(19, paper);
-        inventory.setItem(21, paper);
+        inventory.setItem(16, beacon);
+        inventory.setItem(19, nameTag);
+        inventory.setItem(21, anvil);
         inventory.setItem(23, paper);
         inventory.setItem(25, paper);
         inventory.setItem(28, paper);
@@ -153,10 +164,10 @@ public class Method {
         ItemStack pickaxe = new ItemStack(Material.NETHERITE_PICKAXE);
         ItemStack handItem = player.getInventory().getItemInMainHand();
         pickaxe.addEnchantment(Enchantment.DIG_SPEED,1);
-        Method.addLore(pickaxe,ChatColor.WHITE+"拥有凿石附魔的物品可以在");
+        Method.addLore(pickaxe,ChatColor.WHITE+"拥有凿石附魔的物品可以升级效率");
         Method.addLore(pickaxe,ChatColor.WHITE+"需要手持物品拥有附魔：凿石");
         Method.addLore(pickaxe,ChatColor.WHITE+"点击升级效率附魔");
-        Method.addLore(pickaxe,ChatColor.WHITE+"消耗钻币："+Method.requirePointsForEfficiency(handItem));
+        Method.addLore(pickaxe,ChatColor.AQUA+"消耗钻币："+Method.requirePointsForEfficiency(handItem));
 
 
         inventory.setItem(49,pickaxe);
@@ -188,7 +199,9 @@ public class Method {
         String process = Method.process(enchantment,level);
         Method.addLore(itemStack,process);
         Method.addLore(itemStack, ChatColor.WHITE + "最低需求物品等级："+Method.requireLevel(itemStack,level));
-        Method.addLore(itemStack, ChatColor.AQUA + "消耗钻币：600");
+        //Display the point cost base on the config
+        int requirePoint = SoulEnchants.getPlugin().getConfig().getInt("points_on_enchant",200);
+        Method.addLore(itemStack, ChatColor.AQUA + "消耗钻币："+requirePoint);
 
         inventory.setItem(4,enchantBook);
 
@@ -477,6 +490,66 @@ public class Method {
 
     }
 
+    public static void fixEnchantByLore(Player player,ItemStack itemStack){
+
+        if(itemStack==null){
+            return;
+        }
+
+        boolean fixed = false;
+
+        for(Enchantment enchantment : Method.enchantmentList()){
+
+            if(itemStack.getEnchantments().containsKey(enchantment)){
+                continue;
+            }
+
+            String name = enchantment.getName();
+
+            ItemMeta meta = itemStack.getItemMeta();
+
+            if(meta==null){
+                continue;
+            }
+
+            List<String> lore = meta.getLore();
+
+            if(lore==null){
+                lore=new ArrayList<>();
+            }
+
+
+            for (String line : lore) {
+
+                if (line.contains(name)) {
+
+                    String numeralPart = line.split(" ")[1];
+                    int level = Method.romanToArabic(numeralPart);
+
+                    for (int round = 0; round < level; round++) {
+                        Method.levelUp(itemStack, enchantment);
+                    }
+
+                    player.sendMessage(ChatColor.GOLD+"成功修复"+name+"附魔");
+
+                    fixed= true;
+
+                    break;
+
+
+                }
+
+            }
+
+        }
+
+        if(!fixed){
+            player.sendMessage(ChatColor.AQUA+"手上物品没有需要修复的附魔或未查询成功");
+        }
+
+
+    }
+
     public static void checkExpLore(ItemStack itemStack){
 
         ItemMeta meta = itemStack.getItemMeta();
@@ -589,10 +662,38 @@ public class Method {
         list.add(Material.DIAMOND_ORE);
         list.add(Material.REDSTONE_ORE);
         list.add(Material.LAPIS_ORE);
+        list.add(Material.EMERALD_ORE);
         list.add(Material.ANCIENT_DEBRIS);
 
         return list;
     }
+
+    public static List<Material> fortuneBlockList(){
+
+        List<Material> list = new ArrayList<>();
+        list.add(Material.COAL_ORE);
+        list.add(Material.DIAMOND_ORE);
+        list.add(Material.REDSTONE_ORE);
+        list.add(Material.LAPIS_ORE);
+        list.add(Material.EMERALD_ORE);
+
+        return list;
+    }
+
+    public static boolean checkPlentyBrokeBlock(Block block){
+        Location location = block.getLocation();
+        World world = location.getWorld();
+        if(world==null){
+            return false;
+        }
+        if(location.getBlock().getType()!=Material.AIR){
+            return false;
+        }
+        Particle particle = Particle.CLOUD;
+        world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
+        return true;
+    }
+
 
     public static int getOreBlockExp(Block block){
 
@@ -616,25 +717,36 @@ public class Method {
 
     public static List<Material> stoneBlockList(){
 
-        List<Material> list = new ArrayList<>(Method.oreBlockList());
+        FileConfiguration config = SoulEnchants.getPlugin().getConfig();
 
-        list.add(Material.STONE);
-        list.add(Material.COBBLESTONE);
-        list.add(Material.GRANITE);
-        list.add(Material.DIORITE);
-        list.add(Material.ANDESITE);
-        list.add(Material.SANDSTONE);
-        list.add(Material.RED_SANDSTONE);
-        list.add(Material.SMOOTH_STONE);
-        list.add(Material.DIRT);
-        list.add(Material.GRASS_BLOCK);
-        list.add(Material.GRASS_BLOCK);
-        list.add(Material.MYCELIUM);
-        list.add(Material.PODZOL);
+        List<String> stringList = config.getStringList("stone_block");
+        List<Material> stoneBlocklist = new ArrayList<>();
+
+        for(String string : stringList){
+            stoneBlocklist.add(Material.valueOf(string));
+        }
 
 
+        if(stoneBlocklist.isEmpty()) {
+            //Back up default  stone block
+            stoneBlocklist.add(Material.STONE);
+            stoneBlocklist.add(Material.COBBLESTONE);
+            stoneBlocklist.add(Material.GRANITE);
+            stoneBlocklist.add(Material.DIORITE);
+            stoneBlocklist.add(Material.ANDESITE);
+            stoneBlocklist.add(Material.SANDSTONE);
+            stoneBlocklist.add(Material.RED_SANDSTONE);
+            stoneBlocklist.add(Material.DIRT);
+            stoneBlocklist.add(Material.GRASS_BLOCK);
+            stoneBlocklist.add(Material.GRASS_BLOCK);
+            stoneBlocklist.add(Material.MYCELIUM);
+            stoneBlocklist.add(Material.PODZOL);
+            stoneBlocklist.add(Material.END_STONE);
+        }
 
-        return list;
+
+
+        return stoneBlocklist;
     }
 
 
@@ -696,22 +808,24 @@ public class Method {
         }
     }
 
-    public static void addPlentyMark(ItemStack itemStack){
+    public static void addPlentyMark(List<ItemStack> list) {
 
-        ItemMeta meta = itemStack.getItemMeta();
+        for (ItemStack itemStack : list) {
+            ItemMeta meta = itemStack.getItemMeta();
 
-        int plentyMark = SoulEnchants.getPlugin().getConfig().getInt("plenty_mark",800250);
+            int plentyMark = SoulEnchants.getPlugin().getConfig().getInt("plenty_mark", 800250);
 
-        if(meta==null){
-            return;
+            if (meta == null) {
+                return;
+            }
+
+            meta.setCustomModelData(plentyMark);
+
+            meta.setUnbreakable(true);
+
+            itemStack.setItemMeta(meta);
+
         }
-
-        meta.setCustomModelData(plentyMark);
-
-        meta.setUnbreakable(true);
-
-        itemStack.setItemMeta(meta);
-
     }
 
     public static boolean isFullyGrown(Block cropBlock) {
@@ -765,10 +879,13 @@ public class Method {
 
         ItemMeta meta = itemStack.getItemMeta();
 
-        assert meta != null;
+        if(meta==null){
+            return null;
+        }
         String itemUUID =  meta.getPersistentDataContainer().get(key,PersistentDataType.STRING);
 
         return itemUUID;
+
 
     }
 
@@ -942,66 +1059,67 @@ public class Method {
 
     }
 
-    public static void showSkillDurationBar(Player player, int duration){
 
 
-        BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD + "技能持续时间", BarColor.RED, BarStyle.SOLID);
+    
+    private static final HashSet<Player> unleashingSkillPlayers = new HashSet<>();
 
-        bossBar.addPlayer(player);
-
-        bossBar.setProgress(1.0);
-
-        double time = (double) duration/20;
-
-        BukkitTask task = new BukkitRunnable() {
-            @Override
-            public void run() {
-                // 这里是任务执行的内容
-
-
-                double newProgress = bossBar.getProgress() - (1/time);
-
-
-                // 确保进度不小于0
-                if (newProgress < 0) {
-                    newProgress = 0;
-                }
-
-                // 设置新的进度
-                bossBar.setProgress(newProgress);
-
-
-            }
-
-        }.runTaskTimer(SoulEnchants.getPlugin(),0L,20L);
-
-        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{bossBar.removeAll();task.cancel();},duration);
-
-
-    }
 
     public static boolean unleashSkillCheck(PlayerInteractEvent event, Player player,ItemStack itemStack){
 
-        if (Method.skillPlayerItemMap.containsKey(player)) {
-            //if player already use skill, return false.
-            return false;
+
+        if(event.getAction()==Action.RIGHT_CLICK_AIR || event.getAction()==Action.RIGHT_CLICK_BLOCK){
+
+            if(Method.getUUIDChargeValue(itemStack) >= 100){
+
+
+                unleashingSkillPlayers.add(player);
+                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{unleashingSkillPlayers.remove(player);},40L);
+
+                return true;
+            }
+
+
         }
 
-        if (!player.isSneaking()) {
-            return false;
-        }
 
-        if (!(event.getAction() == Action.RIGHT_CLICK_AIR) || !(event.getAction() == Action.RIGHT_CLICK_AIR)) {
-            return false;
-        }
+        return false;
 
-        return Method.getUUIDChargeValue(itemStack) >= 100;
+    }
+
+    public static void skillUnleashEffect(Player player){
+
+        World world = player.getWorld();
+        Location location = player.getLocation();
+
+        world.playSound(location,Sound.BLOCK_BEACON_POWER_SELECT,3f,3f);
+
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+
+            world.spawnParticle(Particle.CLOUD,location,15);
+            world.playSound(location,Sound.BLOCK_BEACON_ACTIVATE,3f,3f);
+
+
+        },40L);
+
+
+
+    }
+
+    public static void skillUnleashCancelEffect(Player player){
+
+        World world = player.getWorld();
+        Location location = player.getLocation();
+
+        world.playSound(location,Sound.BLOCK_BEACON_DEACTIVATE,2f,2f);
+        world.spawnParticle(Particle.SNOWFLAKE,location,15);
+
 
     }
 
 
 
-    public static HashMap<Player,ItemStack> skillPlayerItemMap = new HashMap<>();
+    
 
     public static int requireLevel(ItemStack  itemStack, int enchantLevel){
         if(enchantLevel==0){
@@ -1058,20 +1176,25 @@ public class Method {
 
         int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
 
-        if(level>=5 && level<10){
-            return 5;
-        }else if(level >= 10 && level<20){
-            return 10;
-        }else if(level>=20 && level<30){
-            return 20;
-        }else if(level>=30 && level<40){
-            return 30;
-        }else if(level>=40){
-            return 50;
+        int requirePoints = 50;
+
+        if(level>=0){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase1",5);
+        }
+        if(level>=10){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase2",10);
+        }
+        if(level>=20){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase3",20);
+        }
+        if(level>=30){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase4",30);
+        }
+        if(level>=40){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase5",50);
         }
 
-
-        return 50;
+        return requirePoints;
 
     }
 
@@ -1079,22 +1202,25 @@ public class Method {
         int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
         int points = SoulEnchants.getPlayerPointsAPI().look(player.getUniqueId());
 
-        int requiredPoints = 0;
+        int requirePoints = 50;
 
-
-        if (level >= 5 && level < 10) {
-            requiredPoints = 5;
-        } else if(level >= 10 && level<20){
-            requiredPoints =10;
-        }else if(level>=20 && level<30){
-            requiredPoints = 20;
-        }else if(level>=30 && level<40){
-            requiredPoints = 30;
-        }else if(level>=40){
-            requiredPoints = 50;
+        if(level>=0){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase1",5);
+        }
+        if(level>=10){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase2",10);
+        }
+        if(level>=20){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase3",20);
+        }
+        if(level>=30){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase4",30);
+        }
+        if(level>=40){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase5",50);
         }
 
-        return points>=requiredPoints;
+        return points>=requirePoints;
 
 
 
@@ -1102,28 +1228,31 @@ public class Method {
     public static void takePointsForEfficiency(ItemStack itemStack, Player player){
 
         int level = itemStack.getEnchantmentLevel(Enchantment.DIG_SPEED);
-        int pointsToTake = 0;
+
 
         // 根据附魔等级判断具体的效果
-        if (level >= 5 && level < 10) {
-            pointsToTake = 5;
-        } else if(level >= 10 && level<20){
-            pointsToTake =10;
-        }else if(level>=20 && level<30){
-            pointsToTake = 20;
-        }else if(level>=30 && level<40){
-            pointsToTake = 30;
-        }else if(level>=40){
-            pointsToTake = 50;
-        }else {
-            player.sendMessage(ChatColor.RED + "拥有的钻币低于"+pointsToTake+"，无法强化效率附魔");
-            return;
+        int requirePoints = 50;
+
+        if(level>=0){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase1",5);
+        }
+        if(level>=10){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase2",10);
+        }
+        if(level>=20){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase3",20);
+        }
+        if(level>=30){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase4",30);
+        }
+        if(level>=40){
+            requirePoints = SoulEnchants.getPlugin().getConfig().getInt("point_on_efficiency.phase5",50);
         }
 
         // 扣取玩家点数
-        SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(), pointsToTake);
+        SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(), requirePoints);
 
-        player.sendMessage("已消耗"+pointsToTake+"钻币进行效率附魔升级");
+        player.sendMessage("已消耗"+requirePoints+"钻币进行效率附魔升级");
 
 
 
@@ -1131,7 +1260,7 @@ public class Method {
 
     public static Set<Player> unleashSkillPlayer = new HashSet<>();
 
-    public static void showUnleashSkillBar(Player player){
+    public static void showUnleashSkillBar(Player player, Enchantment enchantment){
 
         if(unleashSkillPlayer.contains(player)){
             player.sendMessage("无法重复释放技能");
@@ -1141,11 +1270,9 @@ public class Method {
         }
 
 
+        String name = enchantment.getName();
 
-
-
-
-        BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD + "技能正在释放", BarColor.RED, BarStyle.SOLID);
+        BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD + name +"技能正在释放(左键取消)", BarColor.YELLOW, BarStyle.SEGMENTED_10);
 
         bossBar.addPlayer(player);
 
@@ -1166,7 +1293,7 @@ public class Method {
                 if (newProgress < 0) {
                     newProgress = 0;
                 }
-                // 确保进度不大于1.0
+                // 确保进度不大于1.0w
                 if (newProgress > 1.0) {
                     newProgress = 1.0;
                 }
@@ -1189,6 +1316,38 @@ public class Method {
 
 
 
+    }
+
+
+    private static final Map<Character, Integer> romanValues = new HashMap<>();
+
+    static {
+        romanValues.put('I', 1);
+        romanValues.put('V', 5);
+        romanValues.put('X', 10);
+        romanValues.put('L', 50);
+        romanValues.put('C', 100);
+        romanValues.put('D', 500);
+        romanValues.put('M', 1000);
+    }
+
+    public static int romanToArabic(String roman) {
+        int result = 0;
+        int prevValue = 0;
+
+        for (int i = roman.length() - 1; i >= 0; i--) {
+            int currentValue = romanValues.get(roman.charAt(i));
+
+            if (currentValue >= prevValue) {
+                result += currentValue;
+            } else {
+                result -= currentValue;
+            }
+
+            prevValue = currentValue;
+        }
+
+        return result;
     }
 
 
