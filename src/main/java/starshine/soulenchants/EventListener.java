@@ -5,6 +5,8 @@ import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.LivingEntity;
@@ -17,7 +19,6 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.inventory.*;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 
@@ -25,6 +26,8 @@ import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -35,11 +38,9 @@ import java.io.IOException;
 import java.util.*;
 
 
-
-
 public class EventListener implements Listener {
 
-    public static Set<Player> unleashSkillPlayer = new HashSet<>();
+
 
     @EventHandler
     public static void onMainMenu(InventoryClickEvent event) {
@@ -90,17 +91,21 @@ public class EventListener implements Listener {
 
             if (clickedSlot == 16) {
 
-                Method.openEnchantMenu(player);
+                Bukkit.dispatchCommand(player,"soe item setcharge 100");
+
             }
 
             if (clickedSlot == 19) {
 
-                Method.openEnchantMenu(player);
+                Bukkit.dispatchCommand(player,"soe uuid");
             }
 
             if (clickedSlot == 21) {
 
-                Method.openEnchantMenu(player);
+                ItemStack itemStack = player.getInventory().getItemInMainHand();
+
+                Method.fixEnchantByLore(player,itemStack);
+
             }
         }
     }
@@ -121,16 +126,13 @@ public class EventListener implements Listener {
             return;
         }
 
-        //Bukkit.broadcastMessage("testEnchantMenu");
-
 
         if (inventory.getHolder() == player) {
 
-            int clickedSlot = event.getRawSlot();
+
 
             event.setCancelled(true);
 
-            //Bukkit.broadcastMessage("testEnchantMenu");
 
             ItemStack itemStack = event.getCurrentItem();
 
@@ -325,15 +327,13 @@ public class EventListener implements Listener {
             }
 
 
-
-
             //Cost the points to enchant
             int currentPoint = SoulEnchants.getPlayerPointsAPI().look(player.getUniqueId());
-            int pointToTake = SoulEnchants.getPlugin().getConfig().getInt("points_on_enchant",200);
-            if(currentPoint>=pointToTake){
-                SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(),pointToTake);
+            int requirePoint = SoulEnchants.getPlugin().getConfig().getInt("points_on_enchant",200);
+            if(currentPoint>=requirePoint){
+                SoulEnchants.getPlayerPointsAPI().take(player.getUniqueId(),requirePoint);
             }else {
-                player.sendMessage(ChatColor.RED+"钻币数量不足"+pointToTake+"，无法进行附魔");
+                player.sendMessage(ChatColor.RED+"钻币数量不足"+requirePoint+"，无法进行附魔");
                 return;
             }
 
@@ -375,9 +375,7 @@ public class EventListener implements Listener {
         if (firstItem == null) {
             return;
         }
-        if (secondItem == null) {
-            return;
-        }
+        //Allow second item is null because of rename
         if (resultItem == null) {
             return;
         }
@@ -412,7 +410,7 @@ public class EventListener implements Listener {
 
 
             }
-            if (secondItem.getEnchantments().containsKey(enchantment)) {
+            if (secondItem!=null && secondItem.getEnchantments().containsKey(enchantment)) {
 
                 int level = Method.getLevel(firstItem, enchantment);
 
@@ -444,6 +442,52 @@ public class EventListener implements Listener {
         event.setResult(newResult);
 
     }
+
+    @EventHandler
+    public static void onGrindstone(InventoryClickEvent event){
+
+        if(event.getClickedInventory()==null){
+            return;
+        }
+
+        if (event.getClickedInventory().getType() == InventoryType.GRINDSTONE && event.getSlotType()==InventoryType.SlotType.RESULT) {
+
+            Player player = (Player) event.getWhoClicked();
+
+            ItemStack firstItem = event.getInventory().getItem(0);
+            ItemStack secondItem = event.getInventory().getItem(1);
+
+            Inventory inventory = event.getClickedInventory();
+
+
+            for(Enchantment enchantment: Method.enchantmentList()){
+                if(firstItem!=null&&firstItem.getEnchantments().containsKey(enchantment)){
+
+
+                    event.setCancelled(true);
+                    player.closeInventory();
+                    player.sendMessage(ChatColor.RED+"请不要将包含高级附魔的物品放入砂轮");
+
+                    return;
+                }
+                if(secondItem!=null&&secondItem.getEnchantments().containsKey(enchantment)){
+                    event.setCancelled(true);
+                    player.closeInventory();
+
+                    player.sendMessage(ChatColor.RED+"请不要将包含高级附魔的物品放入砂轮");
+                    return;
+                }
+            }
+
+
+
+        }
+
+
+    }
+
+
+
 
     @EventHandler
     public static void onFurnacePlace(BlockPlaceEvent event) {
@@ -702,71 +746,16 @@ public class EventListener implements Listener {
 
     }
 
-    @EventHandler
-    public static void soulBladeSkillUnleash(PlayerInteractEvent event) {
-
-        Player player = event.getPlayer();
-
-        ItemStack itemStack = player.getInventory().getItemInMainHand();
-
-        if(!Method.unleashSkillCheck(event,player,itemStack)){
-            return;
-        }
-
-        if (!Method.isContainEnchantment(itemStack, SoulEnchants.soulBlade)) {
-            return;
-        }
-
-        Method.showUnleashSkillBar(player);
-
-        BukkitTask task = new BukkitRunnable() {
-            @Override
-            public void run() {
-                // 这里是任务执行的内容
-
-                ItemStack currentItem = player.getInventory().getItemInMainHand();
-                if(!Method.isContainEnchantment(currentItem,SoulEnchants.soulBlade)){
-                    player.sendMessage("技能已取消释放");
-                    this.cancel();
-                    return;
-                }
-
-
-                int duration = 6000;
-
-                PotionEffect speed = player.getPotionEffect(PotionEffectType.SPEED);
-                int speedAmplifier = 2;
-                if(speed!=null){
-                    speedAmplifier = 2+ speed.getAmplifier();
-                }
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,duration,speedAmplifier));
-
-                PotionEffect strength = player.getPotionEffect(PotionEffectType.INCREASE_DAMAGE);
-                int strengthAmplifier = 5;
-                if(strength!=null){
-                    strengthAmplifier = 5+ strength.getAmplifier();
-                }
-                player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,duration,strengthAmplifier));
-
-                Method.setUUIDChargeValue(itemStack,0);
-                Method.showSkillDurationBar(player,duration);
-
-
-            }
-
-        }.runTaskLater(SoulEnchants.getPlugin(),40L);
-
-
-
-
-
-    }
 
     @EventHandler
     public static void chiselingEvent1(BlockBreakEvent event) {
 
         Player player = event.getPlayer();
         ItemStack tool = player.getInventory().getItemInMainHand();
+
+        Block block = event.getBlock();
+        Material blockType = block.getType();
+
         Enchantment enchantment = SoulEnchants.chiseling;
 
         if (!tool.getEnchantments().containsKey(enchantment)) {
@@ -774,8 +763,8 @@ public class EventListener implements Listener {
             return;
         }
 
-
         int level = Method.getLevel(tool, enchantment);
+
 
         if (level == 1) {
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 20, 0, false, false, false));
@@ -784,13 +773,30 @@ public class EventListener implements Listener {
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 10, 0, false, false, false));
         }
 
-        Block block = event.getBlock();
+        boolean allowChiseling = false;
+
+
+
+        if(Method.stoneBlockList().contains(blockType)){
+            //Bukkit.broadcastMessage(blockType + "方块类型属于石头");
+            allowChiseling = true;
+        }
+
+        if(level>=3 && Method.oreBlockList().contains(blockType)){
+            //Bukkit.broadcastMessage(blockType +"方块类型属于矿物");
+            allowChiseling = true;
+        }
+
+        if(!allowChiseling){
+            //Bukkit.broadcastMessage("不允许凿石");
+            return;
+        }
+
+
         BlockFace face = player.getFacing();
         World world = block.getWorld();
 
-        if(!Method.stoneBlockList().contains(block.getType())){
-            return;
-        }
+
 
         int centerX = block.getX();
         int centerY = block.getY();
@@ -798,11 +804,22 @@ public class EventListener implements Listener {
 
         Vector direction = player.getLocation().getDirection();
 
+        boolean faceToSky = false;
+        boolean triggered = false;
+
+
+
         // 检查玩家是否朝向天空（Y轴正方向）
         if (direction.getY() > 0.7 || direction.getY() < -0.7) {
 
+            faceToSky = true;
+
             for (int x = centerX - 1; x < centerX + 2; x++) {
                 for (int z = centerZ - 1; z < centerZ + 2; z++) {
+
+                    if(x==centerX && z==centerZ){
+                        continue;
+                    }
 
                     Location location = new Location(world, x, centerY, z);
                     Block nearByBlock = location.getBlock();
@@ -810,19 +827,12 @@ public class EventListener implements Listener {
                     if (nearByBlock.getType() == Material.AIR) {
                         continue;
                     }
-                    if (nearByBlock.getType() == Material.BEDROCK) {
-                        continue;
-                    }
 
                     if(Method.stoneBlockList().contains(nearByBlock.getType())){
                         nearByBlock.breakNaturally(tool);
-                        if(level==1){
-                            event.setCancelled(true);
-                            break;
-                        }
-
+                    }else if(level>=3 && Method.oreBlockList().contains(blockType)){
+                        nearByBlock.breakNaturally(tool);
                     }
-
 
 
 
@@ -831,74 +841,82 @@ public class EventListener implements Listener {
             }
 
 
-            return;
         }
+
+
 
 
         if (face == BlockFace.NORTH || face == BlockFace.SOUTH) {
 
-            for (int x = centerX - 1; x < centerX + 2; x++) {
-                for (int y = centerY - 1; y < centerY + 2; y++) {
+            if (!faceToSky) {
 
-                    Location location = new Location(world, x, y, centerZ);
-                    Block nearByBlock = location.getBlock();
+                for (int x = centerX - 1; x < centerX + 2; x++) {
+                    for (int y = centerY - 1; y < centerY + 2; y++) {
 
-                    if (nearByBlock.getType() == Material.AIR) {
-                        continue;
-                    }
-
-                    if (nearByBlock.getType() == Material.BEDROCK) {
-                        continue;
-                    }
-
-
-                    if(Method.stoneBlockList().contains(nearByBlock.getType())){
-                        nearByBlock.breakNaturally(tool);
-                        if(level==1){
-                            event.setCancelled(true);
-                            break;
+                        if(x==centerX && y==centerY){
+                            continue;
                         }
 
-                    }
+                        Location location = new Location(world, x, y, centerZ);
+                        Block nearByBlock = location.getBlock();
 
+                        if (nearByBlock.getType() == Material.AIR) {
+                            continue;
+                        }
+
+                        if(Method.stoneBlockList().contains(nearByBlock.getType())){
+                            nearByBlock.breakNaturally(tool);
+                        }else if(level>=3 && Method.oreBlockList().contains(blockType)){
+                            nearByBlock.breakNaturally(tool);
+                        }
+
+
+                    }
 
                 }
 
-            }
-            return;
 
+            }
         }
         if (face == BlockFace.EAST || face == BlockFace.WEST) {
 
-            for (int z = centerZ - 1; z < centerZ + 2; z++) {
-                for (int y = centerY - 1; y < centerY + 2; y++) {
+            if (!faceToSky) {
 
-                    Location location = new Location(world, centerX, y, z);
-                    Block nearByBlock = location.getBlock();
-                    if (nearByBlock.getType() == Material.AIR) {
-                        continue;
-                    }
-                    if (nearByBlock.getType() == Material.BEDROCK) {
-                        continue;
-                    }
+                for (int z = centerZ - 1; z < centerZ + 2; z++) {
+                    for (int y = centerY - 1; y < centerY + 2; y++) {
 
-
-                    if(Method.stoneBlockList().contains(nearByBlock.getType())){
-                        nearByBlock.breakNaturally(tool);
-                        if(level==1){
-                            event.setCancelled(true);
-                            break;
+                        if(z==centerZ && y==centerY){
+                            continue;
                         }
 
-                    }
+                        if (triggered) {
+                            continue;
+                        }
 
+                        Location location = new Location(world, centerX, y, z);
+                        Block nearByBlock = location.getBlock();
+                        if (nearByBlock.getType() == Material.AIR) {
+                            continue;
+                        }
+
+                        if(Method.stoneBlockList().contains(nearByBlock.getType())){
+                            nearByBlock.breakNaturally(tool);
+                        }else if(level>=3 && Method.oreBlockList().contains(blockType)){
+                            nearByBlock.breakNaturally(tool);
+                        }
+
+
+                    }
 
                 }
 
             }
-            return;
-
         }
+
+
+
+
+
 
 
     }
@@ -946,59 +964,6 @@ public class EventListener implements Listener {
 
     }
 
-    @EventHandler
-    public static void chiselingSkillUnleash(PlayerInteractEvent event) {
-
-        Player player = event.getPlayer();
-
-        ItemStack itemStack = player.getInventory().getItemInMainHand();
-
-        if(!Method.unleashSkillCheck(event,player,itemStack)){
-            return;
-        };
-
-        if (!Method.isContainEnchantment(itemStack, SoulEnchants.chiseling)) {
-            return;
-        }
-
-
-
-
-        Method.showUnleashSkillBar(player);
-
-        BukkitTask task = new BukkitRunnable() {
-            @Override
-            public void run() {
-                // 这里是任务执行的内容
-
-                ItemStack currentItem = player.getInventory().getItemInMainHand();
-                if(!Method.isContainEnchantment(currentItem,SoulEnchants.chiseling)){
-                    player.sendMessage("技能已取消释放");
-                    this.cancel();
-                    return;
-                }
-
-                int amplifier = 5;
-
-                PotionEffect effect = player.getPotionEffect(PotionEffectType.FAST_DIGGING);
-                if(effect!=null){
-                    amplifier = 5+ effect.getAmplifier();
-                }
-
-                int duration = 6000;
-
-                player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING,duration,amplifier));
-
-                Method.setUUIDChargeValue(itemStack,0);
-                Method.showSkillDurationBar(player,duration);
-
-
-            }
-
-        }.runTaskLater(SoulEnchants.getPlugin(),40L);
-
-
-    }
 
 
 
@@ -1010,7 +975,13 @@ public class EventListener implements Listener {
 
         Block block = event.getBlock();
 
-        if (!Method.oreBlockList().contains(block.getType())) {
+        Material blockType = block.getType();
+
+        if (!Method.oreBlockList().contains(blockType)) {
+            return;
+        }
+
+        if(block.hasMetadata("placedBlock")){
             return;
         }
 
@@ -1025,124 +996,71 @@ public class EventListener implements Listener {
 
         int level = Method.getLevel(tool, enchantment);
 
-        int doubleChance = 0;
 
-        int tripleChance = 0;
-
-
-
-        if(level==1){doubleChance=Method.getEnchantConfig().getInt("plenty.level1",20);}
-
-        if(level>=2){doubleChance=Method.getEnchantConfig().getInt("plenty.level2",100);}
-
-        if(level>=3){tripleChance=Method.getEnchantConfig().getInt("plenty.level3",20);}
-
-        boolean tripleOccur = false;
 
         List<ItemStack> drops = (List<ItemStack>) block.getDrops();
 
-        if(plentySkillPlayers.contains(player)){
 
-            for (ItemStack drop : drops) {
 
-                int amount = drop.getAmount();
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
 
-                drop.setAmount(amount*2);
+                if(!Method.checkPlentyBrokeBlock(block)){
+                    return;
+                }
+                int doubleChance = 0;
 
-                Method.addPlentyMark(drop);
+                int tripleChance = 0;
 
-                block.getDrops().clear();
+                if(level==1){doubleChance=Method.getEnchantConfig().getInt("plenty.level1",20);}
 
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
-                    Location location = block.getLocation();
-                    World world = location.getWorld();
-                    if(world==null){
-                        return;
+                if(level>=2){doubleChance=Method.getEnchantConfig().getInt("plenty.level2",100);}
+
+                if(level>=3){tripleChance=Method.getEnchantConfig().getInt("plenty.level3",100);}
+
+                for(ItemStack drop : drops){
+
+                    int amount = drop.getAmount();
+
+                    if(new Random().nextInt(100)<doubleChance){
+                        amount++;
                     }
-                    if(location.getBlock().getType()!=Material.AIR){
-                        return;
+
+                    if(new Random().nextInt(100)<tripleChance){
+                        amount++;
                     }
-                    Particle particle = Particle.CLOUD;
-                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
+
+                    if(plentyBuffedPlayers.contains(player)){
+                        amount++;
+                    }
+
+                    if(tool.getEnchantments().containsKey(Enchantment.LOOT_BONUS_BLOCKS)){
+
+                        for(int i=0;i<tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS);i++){
+                            if(new Random().nextInt(100)<25){
+                                amount++;
+                            }
+
+                        }
+
+                    }
+
+                    drop.setAmount(amount);
+
                     block.getWorld().dropItemNaturally(block.getLocation(),drop);
 
-                },2L);
 
-
+                }
 
             }
 
-        }
-
-        if(new Random().nextInt(100)< tripleChance){
-
-
-            for (ItemStack drop : drops) {
-
-                int amount = drop.getAmount();
-
-                drop.setAmount(amount*3);
-
-                Method.addPlentyMark(drop);
-
-                block.getDrops().clear();
-
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
-                    Location location = block.getLocation();
-                    World world = location.getWorld();
-                    if(world==null){
-                        return;
-                    }
-                    if(location.getBlock().getType()!=Material.AIR){
-                        return;
-                    }
-                    Particle particle = Particle.CLOUD;
-                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
-                    block.getWorld().dropItemNaturally(block.getLocation(),drop);
-
-                },1L);
+        }.runTaskLater(SoulEnchants.getPlugin(),5L);
 
 
 
-            }
-
-            tripleOccur = true;
-        }
-
-        if(tripleOccur){
-            return;
-        }
-
-        if (new Random().nextInt(100) < doubleChance) {
 
 
-            for (ItemStack drop : drops) {
-
-                int amount = drop.getAmount();
-
-                drop.setAmount(amount*2);
-
-                Method.addPlentyMark(drop);
-
-                block.getDrops().clear();
-
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
-                    Location location = block.getLocation();
-                    World world = location.getWorld();
-                    if(world==null){
-                        return;
-                    }
-                    if(location.getBlock().getType()!=Material.AIR){
-                        return;
-                    }
-                    Particle particle = Particle.CLOUD;
-                    world.spawnParticle(particle,location,3,0.5,0.5,0.5,0.5);
-                    block.getWorld().dropItemNaturally(block.getLocation(),drop);
-
-                },1L);
-            }
-
-        }
 
 
 
@@ -1211,54 +1129,24 @@ public class EventListener implements Listener {
 
     }
 
-    public static HashSet<Player> plentySkillPlayers = new HashSet<>();
-
     @EventHandler
-    public static void plentySkillUnleash(PlayerInteractEvent event) {
+    public static void playerPlacedOreBlock(BlockPlaceEvent event){
 
-        Player player = event.getPlayer();
-
-        ItemStack itemStack = player.getInventory().getItemInMainHand();
-
-        if(!Method.unleashSkillCheck(event,player,itemStack)){
-            return;
-        };
-
-        if (!Method.isContainEnchantment(itemStack, SoulEnchants.plenty)) {
+        Block block = event.getBlock();
+        if(!Method.oreBlockList().contains(block.getType())){
             return;
         }
 
-        Method.showUnleashSkillBar(player);
+        block.setMetadata("placedBlock",new FixedMetadataValue(SoulEnchants.getPlugin(),true));
 
 
-
-        BukkitTask task = new BukkitRunnable() {
-            @Override
-            public void run() {
-                // 这里是任务执行的内容
-
-                ItemStack currentItem = player.getInventory().getItemInMainHand();
-                if(!Method.isContainEnchantment(currentItem,SoulEnchants.plenty)){
-                    player.sendMessage("技能已取消释放");
-                    this.cancel();
-                    return;
-                }
-
-                plentySkillPlayers.add(player);
-
-                int duration = 6000;
-
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{plentySkillPlayers.remove(player);},duration);
-
-                Method.setUUIDChargeValue(itemStack,0);
-                Method.showSkillDurationBar(player,duration);
-
-
-            }
-
-        }.runTaskLater(SoulEnchants.getPlugin(),40L);
 
     }
+
+    public static HashSet<Player> plentyBuffedPlayers = new HashSet<>();
+
+
+
 
     @EventHandler
     public static void accurateEvent1(EntityDamageByEntityEvent event){
@@ -1391,50 +1279,8 @@ public class EventListener implements Listener {
     }
 
     public static HashSet<Player>  accurateSkillPlayers = new HashSet<>();
-    @EventHandler
-    public static void accurateSkillUnleash(PlayerInteractEvent event) {
-
-        Player player = event.getPlayer();
-
-        ItemStack itemStack = player.getInventory().getItemInMainHand();
-
-        if(!Method.unleashSkillCheck(event,player,itemStack)){
-            return;
-        };
-
-        if (!Method.isContainEnchantment(itemStack, SoulEnchants.accurate)) {
-            return;
-        }
-
-        Method.showUnleashSkillBar(player);
-
-        BukkitTask task = new BukkitRunnable() {
-            @Override
-            public void run() {
-                // 这里是任务执行的内容
-
-                ItemStack currentItem = player.getInventory().getItemInMainHand();
-                if(!Method.isContainEnchantment(currentItem,SoulEnchants.accurate)){
-                    player.sendMessage("技能已取消释放");
-                    this.cancel();
-                    return;
-                }
-
-                int duration = 6000;
-
-                accurateSkillPlayers.add(player);
-
-                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{accurateSkillPlayers.remove(player);},duration);
-
-                Method.setUUIDChargeValue(itemStack,0);
-                Method.showSkillDurationBar(player,duration);
 
 
-            }
-
-        }.runTaskLater(SoulEnchants.getPlugin(),40L);
-
-    }
 
     @EventHandler
 
@@ -1630,9 +1476,498 @@ public class EventListener implements Listener {
 
         
 
-        
+    }
+
+    private static Integer getSkillDuration(int level){
+
+        int duration = 0;
+
+        if(level==1){duration=2000;}
+        if(level==2){duration=4000;}
+        if(level==3){duration=6000;}
+
+        return duration;
+
+    }
+
+    private static final HashMap<Player,Enchantment> playerSkillBuffMaps = new HashMap<>();
+
+    private static void  soulBladeSkillEffect(Player player, ItemStack itemStack, int duration){
+
+        PotionEffect speed = player.getPotionEffect(PotionEffectType.SPEED);
+        int speedAmplifier = 1;
+        if(speed!=null){
+            speedAmplifier = 1+ speed.getAmplifier();
+        }
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,duration,speedAmplifier));
+
+        PotionEffect strength = player.getPotionEffect(PotionEffectType.INCREASE_DAMAGE);
+        int strengthAmplifier = 4;
+        if(strength!=null){
+            strengthAmplifier = 4+ strength.getAmplifier();
+        }
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,duration,strengthAmplifier));
+
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+
+            player.removePotionEffect(PotionEffectType.SPEED);
+            player.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
+
+        },duration);
 
 
+
+
+
+
+    }
+
+    private static void chiselingSkillEffect(Player player, ItemStack itemStack,int duration){
+
+        int amplifier = 5;
+        PotionEffect effect = player.getPotionEffect(PotionEffectType.FAST_DIGGING);
+
+        if(effect!=null){
+            amplifier = 5+ effect.getAmplifier();
+        }
+
+        player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING,duration,amplifier));
+
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{
+
+            player.removePotionEffect(PotionEffectType.FAST_DIGGING);
+
+        },duration);
+
+
+    }
+
+    private static void plentySkillEffect(Player player, ItemStack itemStack){
+
+        int level = Method.getLevel(itemStack,SoulEnchants.plenty);
+        int duration = getSkillDuration(level);
+
+        plentyBuffedPlayers.add(player);
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{ plentyBuffedPlayers.remove(player);},duration);
+
+    }
+
+    private static void accurateSkillEffect(Player player, ItemStack itemStack){
+
+        int level = Method.getLevel(itemStack,SoulEnchants.accurate);
+        int duration = getSkillDuration(level);
+
+        accurateSkillPlayers.add(player);
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{ accurateSkillPlayers.remove(player);},duration);
+
+    }
+
+
+    public static HashSet<Player> skillUnleashingPlayers = new HashSet<>();
+    public static HashSet<Player> onSkillDurationPlayers = new HashSet<>();
+
+    @EventHandler
+    public static void skillUnleash(PlayerInteractEvent event){
+
+        Player player = event.getPlayer();
+        ItemStack itemStack = player.getInventory().getItemInMainHand();
+
+
+        if(event.getAction()==Action.RIGHT_CLICK_AIR||event.getAction()==Action.RIGHT_CLICK_BLOCK) {
+
+            if(Method.getUUIDChargeValue(itemStack)<100){
+                //如果物品的充能未满，则直接无法释放技能
+                return;
+            }
+
+            if(onSkillDurationPlayers.contains(player)){
+                player.sendMessage(ChatColor.RED+"无法同时释放多个技能！");
+                //阻止玩家在技能持续时间内释放其他技能
+                return;
+            }
+
+            if(skillUnleashingPlayers.contains(player)){
+                //如果玩家已经正在使用技能，则无需执行下面的技能逻辑，避免重复触发技能。
+                return;
+            }
+
+
+            final Enchantment[] soulEnchant = {null};
+
+            for (Enchantment enchantment : Method.enchantmentList()) {
+
+                if (Method.isContainEnchantment(itemStack, enchantment)) {
+                    soulEnchant[0] = enchantment;
+                    break;
+                }
+
+            }
+
+
+            if (soulEnchant[0] != null) {
+
+                //The logic of unleash skill
+
+                skillUnleashingPlayers.add(player);
+                Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{skillUnleashingPlayers.remove(player);},45L);
+
+                Method.skillUnleashEffect(player);
+                Method.showUnleashSkillBar(player,soulEnchant[0]);
+
+                BukkitTask task = new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        // 这里是任务执行的内容
+
+                        if(cancelSkillPlayers.contains(player)){
+                            Method.skillUnleashCancelEffect(player);
+                            player.sendMessage(ChatColor.RED+"已取消技能释放");
+                            this.cancel();
+                            return;
+                        }
+
+                        int level = Method.getLevel(itemStack,soulEnchant[0]);
+                        int duration = getSkillDuration(level);
+
+
+                        if(soulEnchant[0] ==SoulEnchants.soulBlade){
+                            soulBladeSkillEffect(player,itemStack,duration);
+                        }
+                        if(soulEnchant[0] ==SoulEnchants.chiseling){
+                            chiselingSkillEffect(player,itemStack,duration);
+                        }
+                        if(soulEnchant[0] ==SoulEnchants.plenty){
+                            plentySkillEffect(player,itemStack);
+                        }
+                        if(soulEnchant[0] ==SoulEnchants.accurate){
+                            accurateSkillEffect(player,itemStack);
+                        }
+
+                        Method.setUUIDChargeValue(itemStack,0);
+
+
+
+                        createSkillDurationBar(player,duration);
+
+                        // 为物品添加技能状态的元数据，方便后续检测物品是否为释放技能的物品
+                        addSkillStateData(itemStack);
+
+                        // 延迟执行任务
+                        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(), () -> {
+
+                            removeSkillStateData(itemStack)
+
+                            ;}, duration);
+
+
+
+                        //将玩家映射到对应的buff表
+                        playerSkillBuffMaps.put(player,soulEnchant[0]);
+                        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{playerSkillBuffMaps.remove(player);},duration);
+
+                        //将玩家加入到技能持续时间中的玩家表里，后续通过其他方法阻止玩家在技能持续时间内释放其他技能
+                        onSkillDurationPlayers.add(player);
+                        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{onSkillDurationPlayers.remove(player);},duration);
+
+                        //释放技能后，将充能重置为0
+                        Method.setUUIDChargeValue(itemStack,0);
+
+                    }
+
+                }.runTaskLater(SoulEnchants.getPlugin(),40L);
+
+
+
+            }
+
+        }
+
+    }
+
+    private static final HashSet<Player> cancelSkillPlayers = new HashSet<>();
+    @EventHandler
+    public static void cancelUnleashSkill(PlayerInteractEvent event){
+
+        Player player = event.getPlayer();
+
+        if(event.getAction()==Action.LEFT_CLICK_AIR||event.getAction()==Action.LEFT_CLICK_BLOCK) {
+
+            if(!skillUnleashingPlayers.contains(player)){
+                return;
+            }
+
+            cancelSkillPlayers.add(player);
+            player.sendMessage(ChatColor.RED + "正在尝试取消释放技能");
+            Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(), () -> {
+                cancelSkillPlayers.remove(player);
+            }, 45L);
+
+
+        }
+
+
+    }
+
+    private static final HashMap<Player, BossBar> playerSkillDurationBarMap = new HashMap<>();
+
+    private static void createSkillDurationBar(Player player, int duration){
+
+        BossBar bossBar = Bukkit.createBossBar(ChatColor.BOLD + "技能持续时间", BarColor.RED, BarStyle.SOLID);
+
+        bossBar.addPlayer(player);
+
+        playerSkillDurationBarMap.put(player,bossBar);
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{playerSkillDurationBarMap.remove(player);},duration);
+
+
+        bossBar.setProgress(1.0);
+
+        double time = (double) duration/20;
+
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 这里是任务执行的内容
+
+
+                double newProgress = bossBar.getProgress() - (1/time);
+
+
+                // 确保进度不小于0
+                if (newProgress < 0) {
+                    newProgress = 0;
+                    this.cancel();
+                }
+
+                // 设置新的进度
+                bossBar.setProgress(newProgress);
+
+            }
+
+        }.runTaskTimer(SoulEnchants.getPlugin(),0L,20L);
+
+        Bukkit.getScheduler().runTaskLater(SoulEnchants.getPlugin(),()->{bossBar.removeAll();task.cancel();},duration);
+
+    }
+
+
+
+    private static void showSkillDurationBar(Player player){
+        BossBar durationBar = playerSkillDurationBarMap.get(player);
+        if (durationBar != null) {
+            durationBar.setVisible(true);
+        }
+    }
+
+    private static void hideSkillDurationBar(Player player){
+         BossBar durationBar = playerSkillDurationBarMap.get(player);
+        if (durationBar != null) {
+            durationBar.setVisible(false);
+        }
+    }
+
+    @EventHandler
+    public static void skillDurationBarDisplay(PlayerItemHeldEvent event) {
+
+        Player player = event.getPlayer();
+
+        int previousSlot = event.getPreviousSlot();
+        ItemStack previousItem = player.getInventory().getItem(previousSlot);
+
+        int newSlot = event.getNewSlot();
+        ItemStack newItem = player.getInventory().getItem(newSlot);
+
+
+        boolean previousHasSkillState = itemHasSkillStateData(previousItem);
+        boolean newHasSkillState = itemHasSkillStateData(newItem);
+
+        if (previousHasSkillState) {
+            hideSkillDurationBar(player);
+        }
+        if (newHasSkillState) {
+            showSkillDurationBar(player);
+        }
+
+
+    }
+
+    private static final HashMap<Player,List<PotionEffect>> tempPotionEffectSaver = new HashMap<>();
+
+    private static void stopSkillBuff(Player player,ItemStack itemStack,Enchantment enchantment){
+
+
+
+        int level =0;
+        if(Method.isContainEnchantment(itemStack,enchantment)){
+            level=Method.getLevel(itemStack,enchantment);
+        }
+        if(level==0) {
+            return;
+        }
+
+        List<PotionEffect> buffEffects = new ArrayList<>();
+
+
+        if(Method.isContainEnchantment(itemStack, SoulEnchants.soulBlade)){
+
+            PotionEffect speedEffect = player.getPotionEffect(PotionEffectType.SPEED);
+            PotionEffect strengthEffect = player.getPotionEffect(PotionEffectType.INCREASE_DAMAGE);
+
+            if(strengthEffect != null && speedEffect!=null) {
+                buffEffects.add(speedEffect);
+                buffEffects.add(strengthEffect);
+                player.removePotionEffect(PotionEffectType.SPEED);
+                player.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
+                tempPotionEffectSaver.put(player, buffEffects);
+
+                //player.sendMessage(buffEffects + "加入药水储存器");
+            }
+
+        }else if(Method.isContainEnchantment(itemStack, SoulEnchants.chiseling)) {
+
+            PotionEffect fastDiggingEffect = player.getPotionEffect(PotionEffectType.FAST_DIGGING);
+            if(fastDiggingEffect!=null) {
+                buffEffects.add(fastDiggingEffect);
+                player.removePotionEffect(PotionEffectType.FAST_DIGGING);
+                tempPotionEffectSaver.put(player, buffEffects);
+
+                //player.sendMessage(buffEffects + "加入药水储存器");
+            }
+        }
+
+
+
+
+    }
+
+    private static void resumeSkillBuff(Player player,ItemStack itemStack,Enchantment enchantment){
+
+        int level =0;
+        if(Method.isContainEnchantment(itemStack,enchantment)){
+            level=Method.getLevel(itemStack,enchantment);
+        }
+        if(level==0) {
+            return;
+        }
+
+
+        if(tempPotionEffectSaver.containsKey(player)){
+
+            List<PotionEffect> buffEffects = tempPotionEffectSaver.get(player);
+
+            if(buffEffects==null){return;}
+
+            int duration = 0;
+            for(PotionEffect effect:buffEffects){
+                if(effect!=null) {
+                    player.addPotionEffect(effect);
+                    duration = effect.getDuration();
+                }
+            }
+
+            tempPotionEffectSaver.remove(player);
+
+            BossBar durationBar = playerSkillDurationBarMap.get(player);
+
+            /*
+            if(durationBar!=null){
+                double fullTime = getSkillDuration(level);
+                double newProgress = duration/fullTime;
+
+                if(newProgress>1.0){
+                    newProgress=1.0;
+                    hideSkillDurationBar(player);
+                }
+                if(newProgress<0.0){
+                   newProgress=0.0;
+                    hideSkillDurationBar(player);
+                }
+
+                durationBar.setProgress(newProgress);
+
+
+            */
+
+
+        }
+
+
+
+
+    }
+
+    @EventHandler
+    public static void switchItemBuff(PlayerItemHeldEvent event){
+
+        Player player = event.getPlayer();
+
+        int previousSlot = event.getPreviousSlot();
+        ItemStack previousItem = player.getInventory().getItem(previousSlot);
+
+        int newSlot = event.getNewSlot();
+        ItemStack newItem = player.getInventory().getItem(newSlot);
+
+        for(Enchantment enchantment: Method.enchantmentList()){
+
+            boolean previousHasSkillState = itemHasSkillStateData(previousItem);
+            boolean newHasSkillState =  itemHasSkillStateData(newItem);
+
+            if (previousHasSkillState) {
+                //player.sendMessage(ChatColor.RED+ enchantment.getName()+"停");
+                stopSkillBuff(player,previousItem,enchantment);
+            }
+            if (newHasSkillState){
+                //player.sendMessage(ChatColor.GREEN + enchantment.getName()+ "开");
+                resumeSkillBuff(player, newItem, enchantment);
+            }
+        }
+
+    }
+
+    private static void addSkillStateData(ItemStack itemStack){
+
+        //添加技能持续时间的数据到物品上，方便之后检测物品是否处于技能释放的状态
+
+        ItemMeta meta = itemStack.getItemMeta();
+        if(meta!=null){
+            meta.getPersistentDataContainer().set(
+                    new NamespacedKey(SoulEnchants.getPlugin(), "onSkill"),
+                    PersistentDataType.STRING,
+                    "onSkill"
+            );
+            itemStack.setItemMeta(meta);
+        }
+
+    }
+
+    private static void removeSkillStateData(ItemStack itemStack) {
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            NamespacedKey key = new NamespacedKey(SoulEnchants.getPlugin(), "onSkill");
+            PersistentDataContainer container = meta.getPersistentDataContainer();
+            if (container.has(key, PersistentDataType.STRING)) {
+                container.remove(key);
+                itemStack.setItemMeta(meta);
+            }
+        }
+    }
+
+    private static boolean itemHasSkillStateData(ItemStack itemStack){
+
+        //检测物品是否处于技能状态
+
+        if (itemStack == null || itemStack.getType() == Material.AIR) {
+            return false;
+        }
+
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null) {
+            return false;
+        }
+
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+        NamespacedKey key = new NamespacedKey(SoulEnchants.getPlugin(), "onSkill");
+        return container.has(key, PersistentDataType.STRING);
 
     }
 
