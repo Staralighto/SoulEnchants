@@ -3,6 +3,30 @@ plenty_mark: 800250
 furnace_mark: 800251
 #下面这个是附魔需要消耗的钻币
 points_on_enchant: 200
+#下面这个是升级效率附魔不同阶段消耗的钻币
+point_on_efficiency:
+  phase1: 5
+  phase2: 10
+  phase3: 20
+  phase4: 30
+  phase5: 50
+
+stone_block:
+  - STONE
+  - COBBLESTONE
+  - GRANITE
+  - DIORITE
+  - ANDESITE
+  - SANDSTONE
+  - RED_SANDSTONE
+  - DIRT
+  - GRASS_BLOCK
+  - GRASS_BLOCK
+  - MYCELIUM
+  - PODZOL
+  - END_STONE
+
+
 
 
 #--------------------------------------------------------------------------------
